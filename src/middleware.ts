@@ -4,15 +4,23 @@ import { createServerClient } from "@supabase/ssr";
 const PROTECTED_PREFIXES = ["/recipes", "/shopping", "/calendar"];
 
 export async function middleware(req: NextRequest) {
-    const res = NextResponse.next({ request: { headers: new Headers(req.headers) } });
+    const res = NextResponse.next({
+        request: { headers: new Headers(req.headers) },
+    });
 
     const supabase = createServerClient(
         process.env.NEXT_PUBLIC_SUPABASE_URL!,
         process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
         {
             cookies: {
-                getAll() { return req.cookies.getAll(); },
-                setAll(cookiesToSet) { cookiesToSet.forEach(c => res.cookies.set(c.name, c.value, c.options)); },
+                getAll() {
+                    return req.cookies.getAll();
+                },
+                setAll(cookiesToSet) {
+                    for (const { name, value, options } of cookiesToSet) {
+                        res.cookies.set(name, value, options);
+                    }
+                },
             },
         }
     );
