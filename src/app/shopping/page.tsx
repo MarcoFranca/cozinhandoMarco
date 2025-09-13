@@ -29,18 +29,31 @@ type Recipe = {
 
 type ShoppingItem = {
     id: string;
+    user_id: string;
+    recipe_id: string | null;
+    recipe_ingredient_id: string | null;
     ingredient_name: string;
     quantity: string | null;
     note: string | null;
     in_pantry: boolean;
+    created_at: string;
+};
+
+type GroupRow = {
+    name: string;
+    unit: string | null;
+    total: number;           // se somar numericamente
+    items: ShoppingItem[];
 };
 
 type Recording = {
     id: string;
     shoot_date: string | null;       // yyyy-mm-dd
     shoot_status: string;            // planned|filmed|published
-    equipment_checklist: Record<string, boolean> | null;
+    equipment_checklist: EquipmentChecklist | null;
 };
+
+type EquipmentChecklist = Record<string, boolean>;
 
 const statusOptions = ["idea", "tested", "filmed", "edited", "published"];
 const difficultyOptions = ["easy", "medium", "advanced"];
@@ -48,7 +61,6 @@ const shootStatusOptions = ["planned", "filmed", "published"];
 
 export default function RecipeDetailPage() {
     const { id } = useParams<{ id: string }>();
-    const router = useRouter();
 
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
@@ -190,17 +202,31 @@ export default function RecipeDetailPage() {
         setRec(data as Recording);
     }
 
-    async function saveRecording(next: Partial<Recording & { equipment_checklist: Record<string, boolean> }>) {
+    async function saveRecording(
+        next: Partial<Recording & { equipment_checklist: EquipmentChecklist }>
+    ) {
         if (!rec) return;
-        const payload = {
+
+        const payload: Pick<
+            Recording,
+            "shoot_date" | "shoot_status" | "equipment_checklist"
+        > & { updated_at: string } = {
             shoot_date: next.shoot_date ?? rec.shoot_date,
             shoot_status: next.shoot_status ?? rec.shoot_status,
             equipment_checklist: next.equipment_checklist ?? rec.equipment_checklist,
             updated_at: new Date().toISOString(),
         };
-        const { error } = await supabase.from("recordings").update(payload).eq("id", (rec as any).id);
+
+        // ❌ (rec as any).id  ->  ✅ rec.id
+        const { error } = await supabase
+            .from("recordings")
+            .update(payload)
+            .eq("id", rec.id);
+
         if (error) return alert(error.message);
-        setRec(prev => ({ ...(prev as any), ...payload }));
+
+        // ❌ prev as any  ->  ✅ checagem segura
+        setRec((prev) => (prev ? { ...prev, ...payload } : prev));
     }
 
     if (loading) return <div className="p-6">Carregando…</div>;

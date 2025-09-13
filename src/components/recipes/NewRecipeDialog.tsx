@@ -12,6 +12,8 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import {RecipeStatus} from "@/app/page";
+import {Difficulty} from "@/types/recipe";
 
 export function NewRecipeDialog() {
     const router = useRouter();
@@ -24,14 +26,14 @@ export function NewRecipeDialog() {
     // form state
     const [name, setName] = useState("");
     const [category, setCategory] = useState("");
-    const [status, setStatus] = useState<"idea" | "tested" | "recorded" | "edited" | "published">("idea");
-    const [difficulty, setDifficulty] = useState<"" | "easy" | "medium" | "hard">("");
+    const [status, setStatus] = useState<RecipeStatus>("idea");
+    const [difficulty, setDifficulty] = useState<Difficulty>("easy");
     const [prep, setPrep] = useState<string>("");
 
     // limpa ao abrir/fechar
     useEffect(() => {
         if (!open) {
-            setName(""); setCategory(""); setStatus("idea"); setDifficulty(""); setPrep("");
+            setName(""); setCategory(""); setStatus("idea"); setDifficulty("easy"); setPrep("");
         }
     }, [open]);
 
@@ -75,9 +77,11 @@ export function NewRecipeDialog() {
 
             close();
             router.replace(`/recipes/${data!.id}`);
-        } catch (err: any) {
+        } catch (err: unknown) {
             console.error(err);
-            alert(err.message ?? "Erro ao criar receita");
+            const message = err instanceof Error ? err.message : "Erro ao criar receita";
+            console.error(err)
+            alert(message)
         } finally {
             setLoading(false);
         }
@@ -121,7 +125,9 @@ export function NewRecipeDialog() {
                             <label className="text-sm">Status</label>
                             <select
                                 value={status}
-                                onChange={(e) => setStatus(e.target.value as any)}
+                                onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
+                                    setStatus(e.target.value as RecipeStatus)
+                                }
                                 className="h-9 rounded-md border bg-background px-2 text-sm w-full"
                             >
                                 <option value="idea">Ideia</option>
@@ -136,7 +142,8 @@ export function NewRecipeDialog() {
                             <label className="text-sm">Dificuldade</label>
                             <select
                                 value={difficulty}
-                                onChange={(e) => setDifficulty(e.target.value as any)}
+                                onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
+                                    setDifficulty(e.target.value as Difficulty)}
                                 className="h-9 rounded-md border bg-background px-2 text-sm w-full"
                             >
                                 <option value="">—</option>

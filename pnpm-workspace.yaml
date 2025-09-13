@@ -1,4 +1,5 @@
 ignoredBuiltDependencies:
+  - '@sentry/cli'
   - '@tailwindcss/oxide'
   - sharp
   - unrs-resolver

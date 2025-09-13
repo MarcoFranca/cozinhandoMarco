@@ -49,8 +49,9 @@ export function LoginCard({ next = "/" }: { next?: string }) {
 
             router.refresh();
             router.replace(next);
-        } catch (err: any) {
-            alert(err?.message ?? "Falha na autenticação");
+        } catch (err: unknown) {
+            const msg = e instanceof Error ? e.message : "Falha na autenticação";
+            alert(msg);
         } finally {
             setLoading(false);
         }

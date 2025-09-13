@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import { createSupabaseRSCClient } from "@/lib/supabase/server-rsc";
-import { Recipe } from "@/types/recipe";
+import {IngredientRow, Recipe} from "@/types/recipe";
 import { RecipeGeneralForm } from "@/components/recipes/RecipeGeneralForm";
 import { RecipeIngredientsTab } from "@/components/recipes/RecipeIngredientsTab";
 
@@ -29,7 +29,8 @@ export default async function RecipeDetailPage({ params }: Props) {
         .eq("recipe_id", params.id)
         .not("recipe_ingredient_id", "is", null);
 
-    const inShoppingIds = (shoppingLinks ?? []).map((r) => r.recipe_ingredient_id as string);
+    const inShoppingIds: string[] = (shoppingLinks ?? [])
+        .map((r) => r.recipe_ingredient_id as string);
 
     const recipe = rec as Recipe;
 
@@ -57,7 +58,7 @@ export default async function RecipeDetailPage({ params }: Props) {
                 <div className="p-4">
                     <RecipeIngredientsTab
                         recipeId={recipe.id}
-                        items={(ingredients ?? []) as any}
+                        items={(ingredients ?? []) as IngredientRow[]}   // ✅ sem any
                         inShoppingIds={inShoppingIds}
                     />
                 </div>

@@ -44,8 +44,9 @@ export function RecipeGeneralForm({ recipe }: { recipe: Recipe }) {
             try {
                 await updateRecipeAction(formData);
                 return { ok: true, message: "Salvo!" };
-            } catch (e: any) {
-                return { ok: false, message: e?.message ?? "Erro ao salvar" };
+            } catch (e: unknown) {
+                const msg = e instanceof Error ? e.message : "Erro ao salvar";
+                return { ok: false, message: msg };
             }
         },
         { ok: false, message: "" }

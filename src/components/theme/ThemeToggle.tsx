@@ -3,7 +3,8 @@ import { useTheme } from "next-themes";
 import { Sun, Moon, Monitor } from "lucide-react";
 
 export function ThemeToggle() {
-    const { theme, setTheme } = useTheme();
+// use só o setTheme
+    const { setTheme } = useTheme();
 
     return (
         <div className="flex items-center gap-1 rounded-2xl border px-1 py-1">

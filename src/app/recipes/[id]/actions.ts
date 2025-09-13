@@ -2,7 +2,6 @@
 
 import { revalidatePath } from "next/cache";
 import { createSupabaseServerActionClient } from "@/lib/supabase/server-actions";
-import { redirect } from "next/navigation";
 
 export async function updateRecipeAction(formData: FormData) {
     const supabase = await createSupabaseServerActionClient();

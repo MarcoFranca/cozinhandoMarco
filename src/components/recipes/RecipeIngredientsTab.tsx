@@ -216,7 +216,7 @@ function AutoSubmitInput(props: {
             <input type="hidden" name="recipe_id" value={recipeId}/>
             <input
                 name={name}
-                defaultValue={defaultValue as any}
+                defaultValue={defaultValue}
                 type={type}
                 step={step}
                 onBlur={(e) => e.currentTarget.form?.requestSubmit()}

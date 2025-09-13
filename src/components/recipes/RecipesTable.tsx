@@ -5,6 +5,7 @@ import { Recipe } from "@/types/recipe";
 import { NameCell, StatusBadge, CategoryBadge, DifficultyText } from "./columns";
 import { Button } from "@/components/ui/button";
 import { ArrowUpDown, Copy, Trash2 } from "lucide-react";
+import Link from "next/link";
 
 type Props = { initialData: Recipe[] };
 
@@ -41,15 +42,18 @@ export function RecipesTable({ initialData }: Props) {
         // ordenação
         rows.sort((a, b) => {
             const { key, dir } = sort;
-            const va = (a[key] ?? "") as any;
-            const vb = (b[key] ?? "") as any;
             let res = 0;
+
             if (key === "prep_time_minutes") {
-                res = (va ?? 0) - (vb ?? 0);
+                const na = a.prep_time_minutes ?? 0;
+                const nb = b.prep_time_minutes ?? 0;
+                res = na - nb;
             } else if (key === "updated_at") {
-                res = new Date(va).getTime() - new Date(vb).getTime();
+                res = new Date(a.updated_at).getTime() - new Date(b.updated_at).getTime();
             } else {
-                res = String(va).localeCompare(String(vb));
+                const sa = String(a[key] ?? "");
+                const sb = String(b[key] ?? "");
+                res = sa.localeCompare(sb);
             }
             return dir === "asc" ? res : -res;
         });
@@ -82,9 +86,7 @@ export function RecipesTable({ initialData }: Props) {
                     <tr>
                         <td colSpan={7} className="p-6 text-center text-sm text-muted-foreground">
                             No recipes found.{" "}
-                            <a className="underline" href="/recipes?new=1">
-                                Create one?
-                            </a>
+                            <Link className="underline" href="/recipes?new=1">Create one?</Link>
                         </td>
                     </tr>
                 ) : (

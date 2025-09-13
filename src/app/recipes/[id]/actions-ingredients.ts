@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createSupabaseServerActionClient } from "@/lib/supabase/server-actions";
+import {IngredientUpdatePatch} from "@/types/recipe";
 
 // Helpers
 async function getUserId(supabase: Awaited<ReturnType<typeof createSupabaseServerActionClient>>) {
@@ -48,7 +49,7 @@ export async function updateIngredientAction(formData: FormData) {
 
     const id = String(formData.get("id") || "");
     const recipe_id = String(formData.get("recipe_id") || "");
-    const patch: any = {};
+    const patch: IngredientUpdatePatch = {};
 
     if (formData.has("name")) patch.name = String(formData.get("name") || "").trim();
     if (formData.has("amount")) patch.amount = formData.get("amount") ? Number(formData.get("amount")) : null;
@@ -132,7 +133,7 @@ export async function moveIngredientAction(formData: FormData) {
 
 // —— Shopping List
 
-function buildQuantity(amount: number | null, unit: string | null) {
+function buildQuantity(amount: number | null, unit: string | null): string | null {
     if (amount && unit) return `${amount} ${unit}`;
     if (amount) return `${amount}`;
     if (unit) return unit;
@@ -162,7 +163,7 @@ export async function addToShoppingAction(formData: FormData) {
         recipe_id,
         recipe_ingredient_id: i.id,
         ingredient_name: i.name,
-        quantity: buildQuantity(i.amount as any, i.unit as any),
+        quantity: buildQuantity(i.amount, i.unit),
         note: i.note ?? null,
         in_pantry: false,
     }));

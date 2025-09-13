@@ -17,6 +17,12 @@ export type Recipe = {
     updated_at: string;
 };
 
+export type IngredientRow = {
+    id: string; recipe_id: string; name: string;
+    amount: number | null; unit: string | null;
+    note: string | null; optional: boolean; position: number;
+};
+
 export type RecipeIngredient = {
     id: string;
     user_id: string;
@@ -41,3 +47,12 @@ export type RecipeInstruction = {
     created_at: string;
     updated_at: string;
 };
+
+export type IngredientUpdatePatch = Partial<{
+    name: string;
+    amount: number | null;
+    unit: string | null;
+    note: string | null;
+    optional: boolean;
+    position: number;
+}>
