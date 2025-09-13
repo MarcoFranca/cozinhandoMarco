@@ -1,18 +1,22 @@
 import { notFound } from "next/navigation";
 import { createSupabaseRSCClient } from "@/lib/supabase/server-rsc";
-import {IngredientRow, Recipe} from "@/types/recipe";
+import { IngredientRow, Recipe } from "@/types/recipe";
 import { RecipeGeneralForm } from "@/components/recipes/RecipeGeneralForm";
 import { RecipeIngredientsTab } from "@/components/recipes/RecipeIngredientsTab";
 
-type Props = { params: { id: string } };
+export default async function RecipeDetailPage({
+                                                   params,
+                                               }: {
+    params: Promise<{ id: string }>; // 👈 params é Promise
+}) {
+    const { id } = await params;     // 👈 aguarda antes de usar
 
-export default async function RecipeDetailPage({ params }: Props) {
     const supabase = await createSupabaseRSCClient();
 
     const { data: rec } = await supabase
         .from("recipes")
         .select("id, user_id, name, category, status, prep_time_minutes, difficulty, ingredients, instructions, youtube_url, cover_url, updated_at")
-        .eq("id", params.id)
+        .eq("id", id)
         .single();
 
     if (!rec) notFound();
@@ -20,18 +24,16 @@ export default async function RecipeDetailPage({ params }: Props) {
     const { data: ingredients } = await supabase
         .from("recipe_ingredients")
         .select("id, recipe_id, name, amount, unit, note, optional, position")
-        .eq("recipe_id", params.id)
+        .eq("recipe_id", id)
         .order("position", { ascending: true });
 
     const { data: shoppingLinks } = await supabase
         .from("shopping_list_items")
         .select("recipe_ingredient_id")
-        .eq("recipe_id", params.id)
+        .eq("recipe_id", id)
         .not("recipe_ingredient_id", "is", null);
 
-    const inShoppingIds: string[] = (shoppingLinks ?? [])
-        .map((r) => r.recipe_ingredient_id as string);
-
+    const inShoppingIds: string[] = (shoppingLinks ?? []).map((r) => r.recipe_ingredient_id as string);
     const recipe = rec as Recipe;
 
     return (
@@ -45,7 +47,6 @@ export default async function RecipeDetailPage({ params }: Props) {
                 </div>
             </header>
 
-            {/* Abas (MVP: Geral + Ingredientes) */}
             <section className="rounded-2xl border">
                 <div className="border-b px-4 py-3 font-medium">Geral</div>
                 <div className="p-4">
@@ -58,7 +59,7 @@ export default async function RecipeDetailPage({ params }: Props) {
                 <div className="p-4">
                     <RecipeIngredientsTab
                         recipeId={recipe.id}
-                        items={(ingredients ?? []) as IngredientRow[]}   // ✅ sem any
+                        items={(ingredients ?? []) as IngredientRow[]}
                         inShoppingIds={inShoppingIds}
                     />
                 </div>

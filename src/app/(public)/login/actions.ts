@@ -1,9 +1,18 @@
+"use server";
+
 import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
 import { createServerClient } from "@supabase/ssr";
 
-export async function createSupabaseServerActionClient() {
+export async function signInAction(formData: FormData) {
+    const email = String(formData.get("email") ?? "").trim();
+    const password = String(formData.get("password") ?? "");
+    const next = String(formData.get("next") ?? "/recipes");
+
+    // ✅ Next 15: cookies() é assíncrono
     const cookieStore = await cookies();
-    return createServerClient(
+
+    const supabase = createServerClient(
         process.env.NEXT_PUBLIC_SUPABASE_URL!,
         process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
         {
@@ -19,4 +28,9 @@ export async function createSupabaseServerActionClient() {
             },
         }
     );
+
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) throw new Error(error.message);
+
+    redirect(next);
 }

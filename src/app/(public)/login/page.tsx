@@ -1,25 +1,23 @@
 import { redirect } from "next/navigation";
-import { LoginCard } from "@/components/auth/LoginCard";
 import { createSupabaseRSCClient } from "@/lib/supabase/server-rsc";
+import { LoginCard } from "@/components/auth/LoginCard";
 
+// 👉 Em Next 15, searchParams é Promise e precisa de await
 type PageProps = {
-    searchParams?: { next?: string };
+    searchParams?: Promise<Record<string, string | string[] | undefined>>;
 };
 
 export default async function LoginPage({ searchParams }: PageProps) {
-    const next = searchParams?.next || "/";
+    const sp = await searchParams; // ✅ aguarda
+    const raw = sp?.next;
+    // garante string
+    const next = Array.isArray(raw) ? raw[0] ?? "/" : raw ?? "/";
+
     const supabase = await createSupabaseRSCClient();
     const { data: { session } } = await supabase.auth.getSession();
 
-    if (session) {
-        redirect(next); // já logado -> vai pro destino
-    }
+    // já logado? manda direto pro destino correto
+    // if (session) redirect(next);
 
-    return (
-        <div className="min-h-[calc(100dvh-120px)] grid place-items-center px-4">
-            <div className="w-full max-w-sm">
-                <LoginCard next={next} />
-            </div>
-        </div>
-    );
+    return <LoginCard next={next} />;
 }

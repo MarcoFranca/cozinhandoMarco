@@ -1,9 +1,13 @@
+"use server";
+
 import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
 import { createServerClient } from "@supabase/ssr";
 
-export async function createSupabaseServerActionClient() {
+export async function signOutAction() {
     const cookieStore = await cookies();
-    return createServerClient(
+
+    const supabase = createServerClient(
         process.env.NEXT_PUBLIC_SUPABASE_URL!,
         process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
         {
@@ -19,4 +23,7 @@ export async function createSupabaseServerActionClient() {
             },
         }
     );
+
+    await supabase.auth.signOut();
+    redirect("/login");
 }
