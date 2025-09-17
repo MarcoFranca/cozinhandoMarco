@@ -1,3 +1,4 @@
+// components/home/HomeRecentDrafts.tsx
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { MoreHorizontal } from "lucide-react";
 import Link from "next/link";
@@ -18,9 +19,11 @@ export function HomeRecentDrafts({ items }: { items: Draft[] }) {
                     <p className="text-sm text-muted-foreground">Sem rascunhos ainda.</p>
                 ) : (
                     items.map((d) => (
-                        <div
+                        <Link
                             key={d.id}
-                            className="flex items-center justify-between rounded-lg border p-3 hover:bg-muted/50"
+                            href={`/recipes/${d.id}`}
+                            className="group flex items-center justify-between rounded-lg border p-3 hover:bg-muted/50 cursor-pointer transition-colors"
+                            aria-label={`Abrir rascunho ${d.name}`}
                         >
                             <div>
                                 <p className="text-sm font-medium">{d.name}</p>
@@ -28,10 +31,10 @@ export function HomeRecentDrafts({ items }: { items: Draft[] }) {
                                     {d.category} • atualizado {d.updatedAt}
                                 </p>
                             </div>
-                            <div className="text-muted-foreground">
+                            <div className="text-muted-foreground opacity-50 group-hover:opacity-100 transition-opacity">
                                 <MoreHorizontal className="h-4 w-4" />
                             </div>
-                        </div>
+                        </Link>
                     ))
                 )}
             </CardContent>

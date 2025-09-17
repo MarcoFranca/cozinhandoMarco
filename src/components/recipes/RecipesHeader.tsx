@@ -1,10 +1,11 @@
 "use client";
 
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useState, useEffect } from "react";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
+import { CATEGORIES, STATUSES, DIFFICULTIES } from "@/constants/taxonomies";
 
 export function RecipesHeader({ total }: { total: number }) {
     const router = useRouter();
@@ -25,6 +26,19 @@ export function RecipesHeader({ total }: { total: number }) {
         router.replace(`/recipes${query ? `?${query}` : ""}`, { scroll: false });
     }, [q, status, category, difficulty, router]);
 
+    function openNew() {
+        const usp = new URLSearchParams(Array.from(params.entries()));
+        usp.set("new", "1");
+        router.replace(`/recipes?${usp.toString()}`, { scroll: false });
+    }
+
+    function clearFilters() {
+        setQ("");
+        setStatus("");
+        setCategory("");
+        setDifficulty("");
+    }
+
     return (
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <div>
@@ -40,52 +54,57 @@ export function RecipesHeader({ total }: { total: number }) {
                     className="md:w-[320px]"
                 />
 
-                {/* STATUS (valor em EN, label em PT) */}
+                {/* Status */}
                 <select
                     value={status}
                     onChange={(e) => setStatus(e.target.value)}
                     className="h-9 rounded-md border bg-background px-2 text-sm"
                 >
                     <option value="">Status</option>
-                    <option value="idea">Ideia</option>
-                    <option value="tested">Testada</option>
-                    <option value="recorded">Gravada</option>
-                    <option value="edited">Editada</option>
-                    <option value="published">Publicada</option>
+                    {STATUSES.map((s) => (
+                        <option key={s.value} value={s.value}>
+                            {s.label}
+                        </option>
+                    ))}
                 </select>
 
-                {/* CATEGORIA */}
+                {/* Categoria */}
                 <select
                     value={category}
                     onChange={(e) => setCategory(e.target.value)}
                     className="h-9 rounded-md border bg-background px-2 text-sm"
                 >
                     <option value="">Categoria</option>
-                    <option value="Pasta">Massa</option>
-                    <option value="Meat">Carne</option>
-                    <option value="Fish">Peixe</option>
-                    <option value="Dessert">Doce</option>
-                    <option value="Sauce">Molho</option>
-                    <option value="Drink">Bebida</option>
-                    <option value="Side">Acompanhamento</option>
-                    <option value="Soup">Sopa</option>
+                    {CATEGORIES.map((c) => (
+                        <option key={c.value} value={c.value}>
+                            {c.label}
+                        </option>
+                    ))}
                 </select>
 
-                {/* DIFICULDADE */}
+                {/* Dificuldade */}
                 <select
                     value={difficulty}
                     onChange={(e) => setDifficulty(e.target.value)}
                     className="h-9 rounded-md border bg-background px-2 text-sm"
                 >
                     <option value="">Dificuldade</option>
-                    <option value="easy">Fácil</option>
-                    <option value="medium">Médio</option>
-                    <option value="hard">Difícil</option>
+                    {DIFFICULTIES.map((d) => (
+                        <option key={d.value} value={d.value}>
+                            {d.label}
+                        </option>
+                    ))}
                 </select>
 
-                <Button onClick={() => router.push("/recipes?new=1")} className="rounded-2xl">
+                <Button onClick={openNew} className="rounded-2xl">
                     <Plus className="mr-2 h-4 w-4" /> Nova receita
                 </Button>
+
+                {(q || status || category || difficulty) && (
+                    <Button variant="outline" onClick={clearFilters} className="rounded-2xl">
+                        Limpar
+                    </Button>
+                )}
             </div>
         </div>
     );

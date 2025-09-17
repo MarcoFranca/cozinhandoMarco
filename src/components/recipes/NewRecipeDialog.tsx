@@ -1,171 +1,172 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import * as React from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import {
-    Dialog,
-    DialogContent,
-    DialogHeader,
-    DialogTitle,
-    DialogDescription,
+    Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
 } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import {RecipeStatus} from "@/app/page";
-import {Difficulty} from "@/types/recipe";
+import { Input } from "@/components/ui/input";
+import type { Difficulty, RecipeStatus } from "@/types/db";
+import {
+    CATEGORIES as CATEGORY_OPTIONS,
+    STATUSES,
+    DIFFICULTIES,
+} from "@/constants/taxonomies";
 
 export function NewRecipeDialog() {
     const router = useRouter();
     const params = useSearchParams();
+
     const open = params.get("new") === "1";
 
-    const supabase = useMemo(() => createSupabaseBrowserClient(), []);
-    const [loading, setLoading] = useState(false);
+    const [name, setName] = React.useState("");
+    const [category, setCategory] = React.useState<string>("");         // controlado
+    const [categoryOther, setCategoryOther] = React.useState("");
+    const [status, setStatus] = React.useState<RecipeStatus>("idea");
+    const [difficulty, setDifficulty] = React.useState<Difficulty | "">("");
+    const [prepTime, setPrepTime] = React.useState<string>("");
 
-    // form state
-    const [name, setName] = useState("");
-    const [category, setCategory] = useState("");
-    const [status, setStatus] = useState<RecipeStatus>("idea");
-    const [difficulty, setDifficulty] = useState<Difficulty>("easy");
-    const [prep, setPrep] = useState<string>("");
-
-    // limpa ao abrir/fechar
-    useEffect(() => {
-        if (!open) {
-            setName(""); setCategory(""); setStatus("idea"); setDifficulty("easy"); setPrep("");
+    React.useEffect(() => {
+        if (open) {
+            setName("");
+            setCategory("");
+            setCategoryOther("");
+            setStatus("idea");
+            setDifficulty("");
+            setPrepTime("");
         }
     }, [open]);
 
-    function close() {
-        const usp = new URLSearchParams(window.location.search);
-        usp.delete("new");
-        router.replace(`/recipes${usp.toString() ? `?${usp}` : ""}`, { scroll: false });
+    function setOpen(next: boolean) {
+        const usp = new URLSearchParams(Array.from(params.entries()));
+        if (next) usp.set("new", "1");
+        else usp.delete("new");
+        router.replace(`/recipes${usp.toString() ? `?${usp.toString()}` : ""}`, { scroll: false });
     }
 
-    async function handleCreate() {
-        try {
-            if (!name.trim()) return alert("Dê um nome à receita 🙂");
-            setLoading(true);
+    async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
+        e.preventDefault();
 
-            // Pega a sessão de forma estável no client
-            const { data: { session } } = await supabase.auth.getSession();
-            if (!session?.user) {
-                alert("Sua sessão expirou. Faça login novamente.");
-                router.replace("/login?next=/recipes?new=1");
-                return;
-            }
+        const finalCategory =
+            category === "__OTHER__"
+                ? (categoryOther.trim() || null)
+                : (category || null);
 
-            const user_id = session.user.id;
-            const prep_time_minutes = prep ? parseInt(prep, 10) : null;
+        const fd = new FormData();
+        fd.set("name", name.trim());
+        fd.set("category", finalCategory ?? "");
+        fd.set("status", status);
+        fd.set("difficulty", difficulty || "");
+        fd.set("prep_time_minutes", prepTime || "");
 
-            const { data, error } = await supabase
-                .from("recipes")
-                .insert([{
-                    user_id,
-                    name: name.trim(),
-                    category: category || null,
-                    status,
-                    difficulty: difficulty || null,
-                    prep_time_minutes, // <—
-                }])
-                .select("id")
-                .single();
-
-
-            if (error) throw error;
-
-            close();
-            router.replace(`/recipes/${data!.id}`);
-        } catch (err: unknown) {
-            console.error(err);
-            const message = err instanceof Error ? err.message : "Erro ao criar receita";
-            console.error(err)
-            alert(message)
-        } finally {
-            setLoading(false);
-        }
+        const { createRecipeAction } = await import("@/app/recipes/actions");
+        await createRecipeAction(fd);
+        setOpen(false);
     }
 
     return (
-        <Dialog open={open} onOpenChange={(v) => (!v ? close() : null)}>
-            <DialogContent className="sm:max-w-[520px]">
+        <Dialog open={open} onOpenChange={setOpen}>
+            <DialogContent className="sm:max-w-md">
                 <DialogHeader>
                     <DialogTitle>Nova receita</DialogTitle>
-                    <DialogDescription>Crie a ficha básica. Você pode completar depois.</DialogDescription>
+                    <DialogDescription>Cadastre uma nova receita para o seu banco.</DialogDescription>
                 </DialogHeader>
 
-                <div className="space-y-3">
+                <form onSubmit={onSubmit} className="space-y-3">
                     <div className="space-y-1">
-                        <label className="text-sm">Nome *</label>
-                        <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Ex.: Nhoque de batata" />
+                        <label className="text-sm font-medium">Nome *</label>
+                        <Input
+                            value={name}
+                            onChange={(e) => setName(e.target.value)}
+                            placeholder="Ex.: Costela ao molho..."
+                            required
+                        />
                     </div>
 
-                    <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
-                        <div className="space-y-1">
-                            <label className="text-sm">Categoria</label>
+                    {/* Categoria */}
+                    <div className="space-y-1">
+                        <label className="text-sm font-medium">Categoria</label>
+                        <div className="grid grid-cols-2 gap-2">
                             <select
+                                name="category"
                                 value={category}
                                 onChange={(e) => setCategory(e.target.value)}
-                                className="h-9 rounded-md border bg-background px-2 text-sm w-full"
+                                className="h-9 w-full rounded-md border bg-background px-2 text-sm"
                             >
-                                <option value="">Selecione…</option>
-                                <option value="Pasta">Massa</option>
-                                <option value="Meat">Carne</option>
-                                <option value="Fish">Peixe</option>
-                                <option value="Dessert">Doce</option>
-                                <option value="Sauce">Molho</option>
-                                <option value="Drink">Bebida</option>
-                                <option value="Side">Acompanhamento</option>
-                                <option value="Soup">Sopa</option>
+                                <option value="">Categoria</option>
+                                {CATEGORY_OPTIONS.map((c) => (
+                                    <option key={c.value} value={c.value}>
+                                        {c.label}
+                                    </option>
+                                ))}
+                                <option value="__OTHER__">Outra…</option>
                             </select>
-                        </div>
 
+                            {category === "__OTHER__" && (
+                                <input
+                                    className="h-9 w-full rounded-md border bg-background px-2 text-sm"
+                                    placeholder="Digite a categoria"
+                                    value={categoryOther}
+                                    onChange={(e) => setCategoryOther(e.target.value)}
+                                />
+                            )}
+                        </div>
+                    </div>
+
+                    {/* Status e Dificuldade */}
+                    <div className="grid grid-cols-2 gap-3">
                         <div className="space-y-1">
-                            <label className="text-sm">Status</label>
+                            <label className="text-sm font-medium">Status</label>
                             <select
+                                className="h-9 w-full rounded-md border bg-background px-2 text-sm"
                                 value={status}
-                                onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
-                                    setStatus(e.target.value as RecipeStatus)
-                                }
-                                className="h-9 rounded-md border bg-background px-2 text-sm w-full"
+                                onChange={(e) => setStatus(e.target.value as RecipeStatus)}
                             >
-                                <option value="idea">Ideia</option>
-                                <option value="tested">Testada</option>
-                                <option value="recorded">Gravada</option>
-                                <option value="edited">Editada</option>
-                                <option value="published">Publicada</option>
+                                {STATUSES.map((s) => (
+                                    <option key={s.value} value={s.value}>
+                                        {s.label}
+                                    </option>
+                                ))}
                             </select>
                         </div>
 
                         <div className="space-y-1">
-                            <label className="text-sm">Dificuldade</label>
+                            <label className="text-sm font-medium">Dificuldade</label>
                             <select
+                                className="h-9 w-full rounded-md border bg-background px-2 text-sm"
                                 value={difficulty}
-                                onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
-                                    setDifficulty(e.target.value as Difficulty)}
-                                className="h-9 rounded-md border bg-background px-2 text-sm w-full"
+                                onChange={(e) => setDifficulty(e.target.value as Difficulty)}
                             >
                                 <option value="">—</option>
-                                <option value="easy">Fácil</option>
-                                <option value="medium">Médio</option>
-                                <option value="hard">Difícil</option>
+                                {DIFFICULTIES.map((d) => (
+                                    <option key={d.value} value={d.value}>
+                                        {d.label}
+                                    </option>
+                                ))}
                             </select>
                         </div>
                     </div>
 
+                    {/* Tempo de preparo */}
                     <div className="space-y-1">
-                        <label className="text-sm">Tempo de preparo (min)</label>
-                        <Input type="number" min={0} value={prep} onChange={(e) => setPrep(e.target.value)} />
+                        <label className="text-sm font-medium">Tempo de preparo (min)</label>
+                        <Input
+                            type="number"
+                            min={0}
+                            value={prepTime}
+                            onChange={(e) => setPrepTime(e.target.value)}
+                            placeholder="Ex.: 45"
+                        />
                     </div>
-                </div>
 
-                <div className="flex justify-end gap-2 pt-2">
-                    <Button variant="outline" onClick={close} disabled={loading}>Cancelar</Button>
-                    <Button onClick={handleCreate} disabled={loading}>
-                        {loading ? "Criando..." : "Criar"}
-                    </Button>
-                </div>
+                    <div className="flex justify-end gap-2 pt-2">
+                        <Button type="button" variant="outline" onClick={() => setOpen(false)} className="rounded-xl">
+                            Cancelar
+                        </Button>
+                        <Button type="submit" className="rounded-xl">Salvar</Button>
+                    </div>
+                </form>
             </DialogContent>
         </Dialog>
     );

@@ -1,389 +1,122 @@
-"use client";
+import { requireUser } from "@/lib/auth";
+import { createSupabaseRSCClient } from "@/lib/supabase/server-rsc";
+import { ShoppingHeader } from "@/components/shopping/ShoppingHeader";
+import { ShoppingList } from "@/components/shopping/ShoppingList";
+import { ShoppingUnifiedList } from "@/components/shopping/ShoppingUnifiedList";
 
-import { useEffect, useMemo, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
-import { supabase } from "@/lib/supabase";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Label } from "@/components/ui/label";
-import {
-    Tabs, TabsList, TabsTrigger, TabsContent,
-} from "@/components/ui/tabs";
-import { Checkbox } from "@/components/ui/checkbox";
-import Link from "next/link";
+export const dynamic = "force-dynamic";
 
-type Recipe = {
+type ShoppingItemRow = {
     id: string;
-    user_id: string;
-    name: string;
-    category: string | null;
-    status: string;
-    ingredients: string | null;
-    instructions: string | null;
-    youtube_url: string | null;
-    cover_url: string | null;
-    prep_time_minutes: number | null;
-    difficulty: string | null;
-};
-
-type ShoppingItem = {
-    id: string;
-    user_id: string;
     recipe_id: string | null;
-    recipe_ingredient_id: string | null;
     ingredient_name: string;
-    quantity: string | null;
-    note: string | null;
+    quantity: number | null;
+    note: string | null;          // hoje: guarda unidade ou observação
     in_pantry: boolean;
     created_at: string;
+    recipe_ingredient_id: string | null;
+    // enriquecidos no server:
+    optional?: boolean;
+    unit?: string | null;
 };
 
-type GroupRow = {
-    name: string;
-    unit: string | null;
-    total: number;           // se somar numericamente
-    items: ShoppingItem[];
+type Props = {
+    searchParams: Promise<{
+        show?: string;              // "pending" | "all"
+        hide_optional?: string;     // "1" | undefined
+        unified?: string;           // "1" | undefined
+        selected?: string;          // "id1,id2,..."
+    }>;
 };
 
-type Recording = {
-    id: string;
-    shoot_date: string | null;       // yyyy-mm-dd
-    shoot_status: string;            // planned|filmed|published
-    equipment_checklist: EquipmentChecklist | null;
-};
+export default async function ShoppingPage({ searchParams }: Props) {
+    const { user } = await requireUser();
+    const supabase = await createSupabaseRSCClient();
 
-type EquipmentChecklist = Record<string, boolean>;
+    const { show: showRaw, hide_optional, unified, selected } = await searchParams;
+    const show = (showRaw ?? "pending") as "pending" | "all";
+    const hideOptionals = hide_optional === "1";
+    const unifiedMode = unified === "1";
+    const selectedIds = (selected ?? "")
+        .split(",")
+        .map((s) => s.trim())
+        .filter(Boolean);
 
-const statusOptions = ["idea", "tested", "filmed", "edited", "published"];
-const difficultyOptions = ["easy", "medium", "advanced"];
-const shootStatusOptions = ["planned", "filmed", "published"];
+    // 1) Busca itens da lista
+    const { data: itemsRaw } = await supabase
+        .from("shopping_list_items")
+        .select("id, recipe_id, ingredient_name, quantity, note, in_pantry, created_at, recipe_ingredient_id")
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false });
 
-export default function RecipeDetailPage() {
-    const { id } = useParams<{ id: string }>();
+    let items = (itemsRaw ?? []) as ShoppingItemRow[];
+    if (show === "pending") items = items.filter((i) => !i.in_pantry);
 
-    const [loading, setLoading] = useState(true);
-    const [saving, setSaving] = useState(false);
-    const [tab, setTab] = useState("general");
+    // 2) Carrega metadados de receitas para chips e títulos
+    const recipeIds = Array.from(new Set(items.map((i) => i.recipe_id).filter(Boolean))) as string[];
+    const recipeNames = new Map<string, string>();
+    if (recipeIds.length) {
+        const { data: recs } = await supabase.from("recipes").select("id, name").in("id", recipeIds);
+        (recs ?? []).forEach((r) => recipeNames.set(r.id, r.name));
+    }
 
-    // --- recipe state ---
-    const [recipe, setRecipe] = useState<Recipe | null>(null);
-    const [name, setName] = useState("");
-    const [category, setCategory] = useState("");
-    const [status, setStatus] = useState("idea");
-    const [ingredients, setIngredients] = useState("");
-    const [instructions, setInstructions] = useState("");
-    const [youtubeUrl, setYoutubeUrl] = useState("");
-    const [coverUrl, setCoverUrl] = useState("");
-    const [prepTime, setPrepTime] = useState<number | string>("");
-    const [difficulty, setDifficulty] = useState("");
-
-    // --- shopping state ---
-    const [items, setItems] = useState<ShoppingItem[]>([]);
-    const [ingName, setIngName] = useState("");
-    const [ingQty, setIngQty] = useState("");
-    const [ingNote, setIngNote] = useState("");
-
-    // --- recording state ---
-    const [rec, setRec] = useState<Recording | null>(null);
-    const checklist = useMemo(
-        () => ({ tripod: true, microphone: true, lights: true, ...(rec?.equipment_checklist ?? {}) }),
-        [rec]
+    // 3) Enriquecer itens com optional/unit via recipe_ingredients
+    const ingIds = Array.from(
+        new Set(
+            items
+                .map((i) => i.recipe_ingredient_id)
+                .filter((v): v is string => typeof v === "string" && v.length > 0)
+        )
     );
+    if (ingIds.length) {
+        const { data: meta } = await supabase
+            .from("recipe_ingredients")
+            .select("id, optional, unit")
+            .in("id", ingIds);
 
-    // load everything
-    useEffect(() => { (async () => {
-        setLoading(true);
-        // recipe
-        const { data: r } = await supabase
-            .from("recipes").select("*").eq("id", id).single();
-        if (r) {
-            setRecipe(r as Recipe);
-            setName(r.name ?? "");
-            setCategory(r.category ?? "");
-            setStatus(r.status ?? "idea");
-            setIngredients(r.ingredients ?? "");
-            setInstructions(r.instructions ?? "");
-            setYoutubeUrl(r.youtube_url ?? "");
-            setCoverUrl(r.cover_url ?? "");
-            setPrepTime(r.prep_time_minutes ?? "");
-            setDifficulty(r.difficulty ?? "");
-        }
-
-        // shopping items
-        const { data: si } = await supabase
-            .from("shopping_list_items")
-            .select("id, ingredient_name, quantity, note, in_pantry")
-            .eq("recipe_id", id)
-            .order("ingredient_name", { ascending: true });
-        setItems((si ?? []) as ShoppingItem[]);
-
-        // recording (pega 1 ou cria depois)
-        const { data: sr } = await supabase
-            .from("recordings")
-            .select("id, shoot_date, shoot_status, equipment_checklist")
-            .eq("recipe_id", id)
-            .limit(1);
-        setRec((sr?.[0] ?? null) as Recording | null);
-
-        setLoading(false);
-    })(); }, [id]);
-
-    async function saveGeneral() {
-        setSaving(true);
-        const { data: { session } } = await supabase.auth.getSession();
-        if (!session || !recipe) return;
-
-        const { error } = await supabase.from("recipes").update({
-            user_id: session.user.id, // mantém o owner
-            name, category, status,
-            ingredients, instructions,
-            youtube_url: youtubeUrl || null,
-            cover_url: coverUrl || null,
-            prep_time_minutes: prepTime === "" ? null : Number(prepTime),
-            difficulty: difficulty || null,
-            updated_at: new Date().toISOString(),
-        }).eq("id", recipe.id);
-
-        setSaving(false);
-        if (error) return alert(error.message);
-        alert("Receita salva!");
+        const mOpt = new Map<string, { optional: boolean; unit: string | null }>();
+        (meta ?? []).forEach((r) => mOpt.set(r.id, { optional: r.optional ?? false, unit: r.unit ?? null }));
+        items = items.map((i) => {
+            const info = i.recipe_ingredient_id ? mOpt.get(i.recipe_ingredient_id) : undefined;
+            return { ...i, optional: info?.optional ?? false, unit: info?.unit ?? null };
+        });
     }
 
-    async function addItem() {
-        if (!ingName.trim()) return;
-        const { data: { session } } = await supabase.auth.getSession();
-        if (!session) return;
+    // 4) Filtros por opcionais e receitas selecionadas
+    if (hideOptionals) items = items.filter((i) => !i.optional);
+    const selectedSet =
+        selectedIds.length > 0 ? new Set(selectedIds) : null;
+    if (selectedSet) items = items.filter((i) => (i.recipe_id ? selectedSet.has(i.recipe_id) : true));
 
-        const { error } = await supabase.from("shopping_list_items").insert([{
-            user_id: session.user.id,
-            recipe_id: id,
-            ingredient_name: ingName,
-            quantity: ingQty || null,
-            note: ingNote || null,
-            in_pantry: false,
-        }]);
-
-        if (error) return alert(error.message);
-        setIngName(""); setIngQty(""); setIngNote("");
-        const { data: si } = await supabase
-            .from("shopping_list_items")
-            .select("id, ingredient_name, quantity, note, in_pantry")
-            .eq("recipe_id", id).order("ingredient_name");
-        setItems((si ?? []) as ShoppingItem[]);
+    // 5) Agrupar por receita (modo normal)
+    const groupsMap = new Map<string | null, ShoppingItemRow[]>();
+    for (const it of items) {
+        const key = it.recipe_id ?? null;
+        if (!groupsMap.has(key)) groupsMap.set(key, []);
+        groupsMap.get(key)!.push(it);
     }
-
-    async function togglePantry(item: ShoppingItem, value: boolean) {
-        const { error } = await supabase
-            .from("shopping_list_items")
-            .update({ in_pantry: value })
-            .eq("id", item.id);
-        if (!error) setItems(prev => prev.map(i => i.id === item.id ? { ...i, in_pantry: value } : i));
-    }
-
-    async function removeItem(item: ShoppingItem) {
-        const { error } = await supabase.from("shopping_list_items").delete().eq("id", item.id);
-        if (!error) setItems(prev => prev.filter(i => i.id !== item.id));
-    }
-
-    async function ensureRecording() {
-        if (rec) return;
-        const { data: { session } } = await supabase.auth.getSession();
-        if (!session) return;
-
-        const { data, error } = await supabase.from("recordings").insert([{
-            user_id: session.user.id,
-            recipe_id: id,
-            shoot_status: "planned",
-            equipment_checklist: { tripod: true, microphone: true, lights: true },
-        }]).select("id, shoot_date, shoot_status, equipment_checklist").single();
-
-        if (error) return alert(error.message);
-        setRec(data as Recording);
-    }
-
-    async function saveRecording(
-        next: Partial<Recording & { equipment_checklist: EquipmentChecklist }>
-    ) {
-        if (!rec) return;
-
-        const payload: Pick<
-            Recording,
-            "shoot_date" | "shoot_status" | "equipment_checklist"
-        > & { updated_at: string } = {
-            shoot_date: next.shoot_date ?? rec.shoot_date,
-            shoot_status: next.shoot_status ?? rec.shoot_status,
-            equipment_checklist: next.equipment_checklist ?? rec.equipment_checklist,
-            updated_at: new Date().toISOString(),
-        };
-
-        // ❌ (rec as any).id  ->  ✅ rec.id
-        const { error } = await supabase
-            .from("recordings")
-            .update(payload)
-            .eq("id", rec.id);
-
-        if (error) return alert(error.message);
-
-        // ❌ prev as any  ->  ✅ checagem segura
-        setRec((prev) => (prev ? { ...prev, ...payload } : prev));
-    }
-
-    if (loading) return <div className="p-6">Carregando…</div>;
-    if (!recipe) return <div className="p-6">Receita não encontrada.</div>;
+    const groups = Array.from(groupsMap.entries()).map(([rid, rows]) => ({
+        recipe_id: rid,
+        recipe_name: rid ? recipeNames.get(rid) ?? "Receita" : "Itens soltos",
+        items: rows,
+    }));
 
     return (
-        <div className="space-y-6">
-            <div className="flex items-center gap-4">
-                <Link href="/recipes" className="text-sm text-muted-foreground hover:underline">← Voltar</Link>
-                <h1 className="text-xl font-semibold">{name || "Recipe"}</h1>
-            </div>
+        <div className="mx-auto w-full max-w-5xl px-4 py-6 space-y-6">
+            <ShoppingHeader
+                total={items.length}
+                show={show}
+                hideOptionals={hideOptionals}
+                unified={unifiedMode}
+                recipes={recipeIds.map((id) => ({ id, name: recipeNames.get(id) ?? "Receita" }))}
+                selected={selectedIds}
+            />
 
-            <Tabs value={tab} onValueChange={setTab} className="space-y-4">
-                <TabsList>
-                    <TabsTrigger value="general">Geral</TabsTrigger>
-                    <TabsTrigger value="shopping">Compras</TabsTrigger>
-                    <TabsTrigger value="recording">Gravação</TabsTrigger>
-                </TabsList>
-
-                {/* --- Aba Geral --- */}
-                <TabsContent value="general">
-                    <div className="grid gap-4 md:grid-cols-2">
-                        <div className="grid gap-2">
-                            <Label>Nome</Label>
-                            <Input value={name} onChange={e=>setName(e.target.value)} />
-                        </div>
-                        <div className="grid gap-2">
-                            <Label>Categoria</Label>
-                            <Input value={category} onChange={e=>setCategory(e.target.value)} placeholder="Meat / Pasta / Dessert" />
-                        </div>
-                        <div className="grid gap-2">
-                            <Label>Status</Label>
-                            <Input list="statusOptions" value={status} onChange={e=>setStatus(e.target.value)} />
-                            <datalist id="statusOptions">
-                                {statusOptions.map(s=> <option key={s} value={s} />)}
-                            </datalist>
-                        </div>
-                        <div className="grid gap-2">
-                            <Label>Dificuldade</Label>
-                            <Input list="diffOptions" value={difficulty} onChange={e=>setDifficulty(e.target.value)} />
-                            <datalist id="diffOptions">
-                                {difficultyOptions.map(s=> <option key={s} value={s} />)}
-                            </datalist>
-                        </div>
-                        <div className="grid gap-2">
-                            <Label>Tempo de preparo (min)</Label>
-                            <Input type="number" value={prepTime} onChange={e=>setPrepTime(e.target.value)} />
-                        </div>
-                        <div className="grid gap-2">
-                            <Label>Link YouTube</Label>
-                            <Input value={youtubeUrl} onChange={e=>setYoutubeUrl(e.target.value)} />
-                        </div>
-                        <div className="grid gap-2 md:col-span-2">
-                            <Label>Ingredientes (markdown ou lista)</Label>
-                            <Textarea rows={4} value={ingredients} onChange={e=>setIngredients(e.target.value)} />
-                        </div>
-                        <div className="grid gap-2 md:col-span-2">
-                            <Label>Instruções (passo a passo)</Label>
-                            <Textarea rows={6} value={instructions} onChange={e=>setInstructions(e.target.value)} />
-                        </div>
-                    </div>
-                    <div className="mt-4">
-                        <Button onClick={saveGeneral} disabled={saving}>
-                            {saving ? "Salvando..." : "Salvar alterações"}
-                        </Button>
-                    </div>
-                </TabsContent>
-
-                {/* --- Aba Compras --- */}
-                <TabsContent value="shopping">
-                    <div className="flex flex-col md:flex-row gap-3 items-end">
-                        <div className="grid gap-2 flex-1">
-                            <Label>Ingrediente</Label>
-                            <Input value={ingName} onChange={e=>setIngName(e.target.value)} placeholder="Cordeiro" />
-                        </div>
-                        <div className="grid gap-2 w-40">
-                            <Label>Quantidade</Label>
-                            <Input value={ingQty} onChange={e=>setIngQty(e.target.value)} placeholder="1,5 kg" />
-                        </div>
-                        <div className="grid gap-2 w-60">
-                            <Label>Observação</Label>
-                            <Input value={ingNote} onChange={e=>setIngNote(e.target.value)} placeholder="usar fresco" />
-                        </div>
-                        <Button onClick={addItem}>Adicionar</Button>
-                    </div>
-
-                    <ul className="mt-4 divide-y rounded-lg border">
-                        {items.length === 0 ? (
-                            <li className="p-4 text-sm text-muted-foreground">Nenhum item ainda.</li>
-                        ) : items.map(item => (
-                            <li key={item.id} className="p-3 flex items-center gap-3">
-                                <Checkbox
-                                    checked={item.in_pantry}
-                                    onCheckedChange={(v)=>togglePantry(item, Boolean(v))}
-                                />
-                                <div className="flex-1">
-                                    <p className="font-medium">{item.ingredient_name}</p>
-                                    <p className="text-xs text-muted-foreground">
-                                        {item.quantity || "—"} {item.note ? `· ${item.note}` : ""}
-                                    </p>
-                                </div>
-                                <Button variant="destructive" size="sm" onClick={()=>removeItem(item)}>Remover</Button>
-                            </li>
-                        ))}
-                    </ul>
-                </TabsContent>
-
-                {/* --- Aba Gravação --- */}
-                <TabsContent value="recording">
-                    {!rec ? (
-                        <div className="space-y-3">
-                            <p className="text-sm text-muted-foreground">Nenhuma gravação ainda.</p>
-                            <Button onClick={ensureRecording}>Criar gravação</Button>
-                        </div>
-                    ) : (
-                        <div className="grid gap-4 md:grid-cols-2">
-                            <div className="grid gap-2">
-                                <Label>Data da gravação</Label>
-                                <Input
-                                    type="date"
-                                    value={rec.shoot_date ?? ""}
-                                    onChange={(e)=>saveRecording({ shoot_date: e.target.value })}
-                                />
-                            </div>
-                            <div className="grid gap-2">
-                                <Label>Status</Label>
-                                <Input
-                                    list="shootStatusOptions"
-                                    value={rec.shoot_status}
-                                    onChange={(e)=>saveRecording({ shoot_status: e.target.value })}
-                                />
-                                <datalist id="shootStatusOptions">
-                                    {shootStatusOptions.map(s=> <option key={s} value={s} />)}
-                                </datalist>
-                            </div>
-
-                            <div className="md:col-span-2 grid gap-3">
-                                <Label>Checklist de equipamentos</Label>
-                                <div className="flex gap-6">
-                                    {["tripod","microphone","lights"].map(key => (
-                                        <label key={key} className="flex items-center gap-2 text-sm capitalize">
-                                            <Checkbox
-                                                checked={Boolean(checklist[key as keyof typeof checklist])}
-                                                onCheckedChange={(v)=>{
-                                                    const next = { ...(rec.equipment_checklist ?? {}), [key]: Boolean(v) };
-                                                    saveRecording({ equipment_checklist: next });
-                                                }}
-                                            />
-                                            {key}
-                                        </label>
-                                    ))}
-                                </div>
-                            </div>
-                        </div>
-                    )}
-                </TabsContent>
-            </Tabs>
+            {unifiedMode ? (
+                <ShoppingUnifiedList items={items} />
+            ) : (
+                <ShoppingList groups={groups} />
+            )}
         </div>
     );
 }
