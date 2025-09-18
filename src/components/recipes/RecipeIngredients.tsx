@@ -39,7 +39,7 @@ export function RecipeIngredients({ recipeId, items }: { recipeId: string; items
                             fd.set("note", fnote);
                             if (fopt) fd.set("optional", "on");
 
-                            const { addIngredientFormAction } = await import("@/app/recipes/actions");
+                            const { addIngredientFormAction } = await import("../../app/dashboard/recipes/actions");
                             await addIngredientFormAction(fd);
 
                             setFname(""); setFamount(""); setFunit(""); setFunitOther(""); setFnote(""); setFopt(false);
@@ -61,7 +61,7 @@ export function RecipeIngredients({ recipeId, items }: { recipeId: string; items
                         />
                         <div className="flex gap-2">
                             <select
-                                className="h-9 w-full rounded-md border bg-background px-2 text-sm"
+                                className="h-9 w-full rounded-md border bg-background px-2 text-sm cursor-pointer"
                                 value={funit}
                                 onChange={(e) => setFunit(e.target.value)}
                             >
@@ -86,12 +86,13 @@ export function RecipeIngredients({ recipeId, items }: { recipeId: string; items
                             <label className="inline-flex items-center gap-2 text-sm text-muted-foreground">
                                 <input
                                     type="checkbox"
+                                    className='cursor-pointer'
                                     checked={fopt}
                                     onChange={(e) => setFopt(e.target.checked)}
                                 />
                                 Opcional
                             </label>
-                            <Button type="submit" className="rounded-xl">Adicionar</Button>
+                            <Button type="submit" className="rounded-xl cursor-pointer">Adicionar</Button>
                         </div>
                     </form>
                 </CardContent>
@@ -113,18 +114,18 @@ export function RecipeIngredients({ recipeId, items }: { recipeId: string; items
                                         <form action={async (fd) => {
                                             fd.set("id", it.id);
                                             fd.set("dir", "up");
-                                            const { moveIngredientAction } = await import("@/app/recipes/actions");
+                                            const { moveIngredientAction } = await import("../../app/dashboard/recipes/actions");
                                             await moveIngredientAction(fd);
                                         }}>
-                                            <Button type="submit" size="icon" variant="ghost"><ArrowUp className="h-4 w-4" /></Button>
+                                            <Button type="submit" size="icon" variant="ghost" className="cursor-pointer"><ArrowUp className="h-4 w-4" /></Button>
                                         </form>
                                         <form action={async (fd) => {
                                             fd.set("id", it.id);
                                             fd.set("dir", "down");
-                                            const { moveIngredientAction } = await import("@/app/recipes/actions");
+                                            const { moveIngredientAction } = await import("../../app/dashboard/recipes/actions");
                                             await moveIngredientAction(fd);
                                         }}>
-                                            <Button type="submit" size="icon" variant="ghost"><ArrowDown className="h-4 w-4" /></Button>
+                                            <Button type="submit" size="icon" variant="ghost" className="cursor-pointer"><ArrowDown className="h-4 w-4" /></Button>
                                         </form>
                                     </div>
 
@@ -133,7 +134,7 @@ export function RecipeIngredients({ recipeId, items }: { recipeId: string; items
                                         className="flex flex-1 flex-wrap items-center gap-2"
                                         action={async (fd) => {
                                             fd.set("id", it.id);
-                                            const { updateIngredientAction } = await import("@/app/recipes/actions");
+                                            const { updateIngredientAction } = await import("../../app/dashboard/recipes/actions");
                                             await updateIngredientAction(fd);
                                         }}
                                     >
@@ -142,10 +143,10 @@ export function RecipeIngredients({ recipeId, items }: { recipeId: string; items
                                         <Input name="unit" defaultValue={it.unit ?? ""} placeholder="Unid." className="w-24" />
                                         <Input name="note" defaultValue={it.note ?? ""} placeholder="Obs." className="w-40" />
                                         <label className="inline-flex items-center gap-2 text-sm text-muted-foreground">
-                                            <Checkbox name="optional" defaultChecked={it.optional} />
+                                            <Checkbox name="optional" defaultChecked={it.optional} className="cursor-pointer" />
                                             Opcional
                                         </label>
-                                        <Button type="submit" size="sm" variant="secondary" className="rounded-xl">Salvar</Button>
+                                        <Button type="submit" size="sm" variant="secondary" className="rounded-xl cursor-pointer">Salvar</Button>
                                     </form>
 
                                     {/* excluir */}
@@ -153,11 +154,11 @@ export function RecipeIngredients({ recipeId, items }: { recipeId: string; items
                                         action={async (fd) => {
                                             if (!confirm("Remover ingrediente?")) return;
                                             fd.set("id", it.id);
-                                            const { deleteIngredientAction } = await import("@/app/recipes/actions");
+                                            const { deleteIngredientAction } = await import("../../app/dashboard/recipes/actions");
                                             await deleteIngredientAction(fd);
                                         }}
                                     >
-                                        <Button type="submit" size="icon" variant="destructive" className="rounded-xl">
+                                        <Button type="submit" size="icon" variant="destructive" className="rounded-xl cursor-pointer">
                                             <Trash2 className="h-4 w-4" />
                                         </Button>
                                     </form>

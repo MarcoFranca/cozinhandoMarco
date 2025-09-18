@@ -6,6 +6,7 @@ import {RecordingStatus} from "@/constants/taxonomies";
 
 export type UUID = string;
 export type ISODate = string; // ex.: "2025-03-30T12:34:56.000Z"
+export type SiteOverride = "auto" | "forcar_exibir" | "forcar_ocultar";
 
 /* ============== ENUMS SUGERIDOS (ajuste se necessário) ============== */
 // status da receita (tabela recipes.status)
@@ -41,8 +42,32 @@ export type RecipeRow = {
     difficulty: Difficulty | null;   // "easy" | "medium" | "hard" | null
     youtube_url: string | null;
     cover_url: string | null;
+    site_slug: string | null;
+    site_override: "auto" | "forcar_exibir" | "forcar_ocultar" | null;
+    preferir_link_youtube: boolean | null;
+    site_order: number | null;
+    short_description: string | null;
+    publicado_at: string | null;
     created_at: ISODate;
     updated_at: ISODate;
+};
+
+export type RecipeForOverview = {
+    id: string;
+    name: string;
+    category: string | null;
+    status: string;
+    difficulty: string | null;
+    prep_time_minutes: number | null;
+
+    site_slug: string | null;
+    site_override: "auto" | "forcar_exibir" | "forcar_ocultar" | null;
+    preferir_link_youtube: boolean | null;
+    site_order: number | null;
+    short_description: string | null;
+    publicado_at: string | null;
+    youtube_url: string | null;
+    cover_url: string | null;
 };
 
 export type RecipeInsert = {

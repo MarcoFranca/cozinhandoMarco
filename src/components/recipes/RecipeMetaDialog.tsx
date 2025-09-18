@@ -24,14 +24,14 @@ export function RecipeMetaDialog({
     return (
         <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
-                <Button variant="outline" className="rounded-xl">
-                    <Pencil className="mr-2 h-4 w-4" /> Editar metadados
+                <Button variant="outline" className="rounded-xl cursor-pointer">
+                    <Pencil className="mr-2 h-4 w-4" /> Editar
                 </Button>
             </DialogTrigger>
 
             <DialogContent className="sm:max-w-lg">
                 <DialogHeader>
-                    <DialogTitle>Editar metadados</DialogTitle>
+                    <DialogTitle>Editar</DialogTitle>
                     <DialogDescription>Atualize as informações principais da receita.</DialogDescription>
                 </DialogHeader>
 

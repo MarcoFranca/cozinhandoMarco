@@ -36,7 +36,7 @@ export function ShoppingList({ groups }: { groups: Group[] }) {
     async function toggle(id: string, next: boolean) {
         updateItem(id, { in_pantry: next });
         startTransition(async () => {
-            const { toggleShoppingItemAction } = await import("@/app/recipes/actions");
+            const { toggleShoppingItemAction } = await import("../../app/dashboard/recipes/actions");
             const fd = new FormData();
             fd.set("id", id);
             fd.set("in_pantry", next ? "1" : "0");
@@ -46,7 +46,7 @@ export function ShoppingList({ groups }: { groups: Group[] }) {
 
     async function del(id: string) {
         removeItem(id);
-        const { deleteShoppingItemAction } = await import("@/app/recipes/actions");
+        const { deleteShoppingItemAction } = await import("../../app/dashboard/recipes/actions");
         const fd = new FormData();
         fd.set("id", id);
         await deleteShoppingItemAction(fd);

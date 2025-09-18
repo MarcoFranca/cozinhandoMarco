@@ -23,7 +23,7 @@ export function RecipeRecordings({
     // --- criar nova ---
     async function onCreate(formData: FormData) {
         startTransition(async () => {
-            const { createRecordingAction } = await import("@/app/recipes/actions");
+            const { createRecordingAction } = await import("../../app/dashboard/recipes/actions");
             await createRecordingAction(formData);
             router.refresh();
         });
@@ -76,7 +76,7 @@ export function RecipeRecordings({
                             <Textarea name="scene_notes" placeholder="Cenas, ângulos, B-roll, observações..." />
                         </div>
 
-                        <Button type="submit" disabled={isPending} className="rounded-xl">
+                        <Button type="submit" disabled={isPending} className="rounded-xl cursor-pointer">
                             {isPending ? "Salvando..." : "Salvar"}
                         </Button>
                     </form>
@@ -100,7 +100,7 @@ function RecordingItem({ row }: { row: RecordingRow }) {
 
     async function onUpdate(formData: FormData) {
         startTransition(async () => {
-            const { updateRecordingAction } = await import("@/app/recipes/actions");
+            const { updateRecordingAction } = await import("../../app/dashboard/recipes/actions");
             await updateRecordingAction(formData);
             setEdit(false);
             router.refresh();
@@ -110,7 +110,7 @@ function RecordingItem({ row }: { row: RecordingRow }) {
     async function onDelete() {
         if (!confirm("Excluir esta gravação?")) return;
         startTransition(async () => {
-            const { deleteRecordingAction } = await import("@/app/recipes/actions");
+            const { deleteRecordingAction } = await import("../../app/dashboard/recipes/actions");
             const fd = new FormData();
             fd.set("id", row.id);
             await deleteRecordingAction(fd);
@@ -136,10 +136,10 @@ function RecordingItem({ row }: { row: RecordingRow }) {
                         ) : null}
                     </div>
                     <div className="flex items-center gap-1">
-                    <Button size="icon" variant="ghost" onClick={() => setEdit(true)} title="Editar">
+                    <Button size="icon" variant="ghost" className={"cursor-pointer"} onClick={() => setEdit(true)} title="Editar">
                             <Pencil className="h-4 w-4" />
                         </Button>
-                        <Button size="icon" variant="ghost" onClick={onDelete} title="Excluir">
+                        <Button size="icon" variant="ghost" className={"cursor-pointer"} onClick={onDelete} title="Excluir">
                             <Trash2 className="h-4 w-4" />
                         </Button>
                     </div>
@@ -156,7 +156,7 @@ function RecordingItem({ row }: { row: RecordingRow }) {
                     <select
                         name="shoot_status"
                         defaultValue={row.shoot_status ?? ""}
-                        className="h-9 w-full rounded-md border bg-background px-2 text-sm md:col-span-1"
+                        className="h-9 w-full rounded-md border bg-background px-2 text-sm md:col-span-1 cursor-pointer"
                     >
                         <option value="">—</option>
                         {RECORDING_STATUSES.map((s) => (
@@ -170,10 +170,10 @@ function RecordingItem({ row }: { row: RecordingRow }) {
                         rows={2}
                     />
                     <div className="md:col-span-4 flex justify-end gap-2 pt-1">
-                        <Button type="button" variant="outline" onClick={() => setEdit(false)} className="rounded-xl">
+                        <Button type="button" variant="outline" onClick={() => setEdit(false)} className="rounded-xl cursor-pointer">
                             Cancelar
                         </Button>
-                        <Button type="submit" className="rounded-xl">
+                        <Button type="submit" className="rounded-xl cursor-pointer">
                             <Save className="mr-2 h-4 w-4" /> Salvar
                         </Button>
                     </div>

@@ -1,4 +1,4 @@
-// app/recipes/[id]/page.tsx
+// app/dashboard/recipes/[id]/page.tsx
 import { notFound } from "next/navigation";
 import { requireUser } from "@/lib/auth";
 import { createSupabaseRSCClient } from "@/lib/supabase/server-rsc";
@@ -24,6 +24,7 @@ import {
     statusLabel,
     difficultyLabel,
 } from "@/constants/taxonomies";
+import {RecipeSiteDialog} from "@/components/recipes/RecipeSiteDialog";
 
 // 👇 form com selects (novo componente abaixo)
 export const dynamic = "force-dynamic";
@@ -44,7 +45,7 @@ export default async function RecipePage({ params, searchParams }: Props) {
 
     const { data: recipe } = await supabase
         .from("recipes")
-        .select("id, user_id, name, category, status, prep_time_minutes, difficulty, youtube_url, cover_url, updated_at")
+        .select("id, user_id, name, category, status, prep_time_minutes, difficulty, youtube_url, cover_url, updated_at, site_slug, site_override, preferir_link_youtube, site_order, short_description, publicado_at")
         .eq("id", recipeId)
         .eq("user_id", user.id)
         .single();
@@ -102,7 +103,7 @@ export default async function RecipePage({ params, searchParams }: Props) {
                 </div>
                 <div className="flex items-center gap-2">
                     <Button variant="secondary" asChild className="rounded-xl">
-                        <Link href="/recipes">Voltar</Link>
+                        <Link href="/dashboard/recipes">Voltar</Link>
                     </Button>
                 </div>
             </div>
@@ -129,20 +130,21 @@ export default async function RecipePage({ params, searchParams }: Props) {
                             totalDuration={totalDuration}
                         />
                     </div>
+
                 </div>
             )}
 
-            {tab === "ingredients" && <RecipeIngredients recipeId={recipeId} items={ing} />}
-            {tab === "instructions" && <RecipeInstructions recipeId={recipeId} items={inst} />}
-            {tab === "recording" && <RecipeRecordings recipeId={recipeId} items={recs} />}
+            {tab === "ingredients" && <RecipeIngredients recipeId={recipeId} items={ing}/>}
+            {tab === "instructions" && <RecipeInstructions recipeId={recipeId} items={inst}/>}
+            {tab === "recording" && <RecipeRecordings recipeId={recipeId} items={recs}/>}
         </div>
     );
 }
 
-function TabLink({ id, tab, label, active }:{ id: string; tab: string; label: string; active: boolean }) {
+function TabLink({id, tab, label, active}: { id: string; tab: string; label: string; active: boolean }) {
     return (
         <Link
-            href={`/recipes/${id}?tab=${tab}`}
+            href={`/dashboard/recipes/${id}?tab=${tab}`}
             className={`border-b-2 px-1.5 py-2 transition-colors hover:text-foreground ${active ? "border-foreground" : "border-transparent text-muted-foreground"}`}
         >
             {label}

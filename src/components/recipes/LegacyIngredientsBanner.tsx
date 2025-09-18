@@ -15,7 +15,7 @@ export function LegacyIngredientsBanner({ recipeId, hasLegacy }: { recipeId: str
                 </p>
                 <form action={async (fd) => {
                     fd.set("recipe_id", recipeId);
-                    const { convertIngredientsFromTextAction } = await import("@/app/recipes/actions");
+                    const { convertIngredientsFromTextAction } = await import("../../app/dashboard/recipes/actions");
                     await convertIngredientsFromTextAction(fd);
                 }}>
                     <Button type="submit" className="rounded-xl" disabled={pending}>

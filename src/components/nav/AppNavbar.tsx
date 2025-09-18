@@ -5,6 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { APP_ROUTES, isActive } from "@/constants/routes";
 import { Button } from "@/components/ui/button";
 import { Plus, LogOut } from "lucide-react";
+import {signOutAction} from "@/app/actions-auth";
 
 export function AppNavbar() {
     const pathname = usePathname();
@@ -30,12 +31,6 @@ export function AppNavbar() {
 
                 {/* Right: ações rápidas */}
                 <div className="flex items-center gap-2">
-                    <Button
-                        onClick={() => router.push("/recipes?new=1")}
-                        className="rounded-2xl"
-                    >
-                        <Plus className="mr-2 h-4 w-4" /> Nova Receita
-                    </Button>
 
                     {/* Logout via server action */}
                     <form
@@ -44,8 +39,8 @@ export function AppNavbar() {
                             await signOutAction();
                         }}
                     >
-                        <Button type="submit" variant="ghost" className="rounded-2xl" title="Sair">
-                            <LogOut className="h-4 w-4" />
+                        <Button type="submit" variant="ghost" className="rounded-2xl h-9 cursor-pointer">
+                            <LogOut className="mr-2 h-4 w-4" /> Sair
                         </Button>
                     </form>
                 </div>

@@ -78,7 +78,7 @@ export function RecipesTable({ initialData }: { initialData: RecipeWithCountsRow
         return (
             <div className="rounded-2xl border p-10 text-center text-sm text-muted-foreground">
                 Nenhuma receita encontrada.
-                <Link className="ml-1 underline" href={`/recipes?${usp.toString()}`}>
+                <Link className="ml-1 underline" href={`/dashboard/recipes?${usp.toString()}`}>
                     Criar agora?
                 </Link>
             </div>
@@ -104,7 +104,7 @@ export function RecipesTable({ initialData }: { initialData: RecipeWithCountsRow
                 {data.map((r) => (
                     <tr key={r.id} className="hover:bg-muted/30">
                         <td className="px-4 py-3 text-sm">
-                            <Link href={`/recipes/${r.id}`} className="font-medium hover:underline">
+                            <Link href={`/dashboard/recipes/${r.id}`} className="font-medium hover:underline">
                                 {r.name}
                             </Link>
                         </td>
@@ -121,14 +121,14 @@ export function RecipesTable({ initialData }: { initialData: RecipeWithCountsRow
                         <td className="px-4 py-3 text-sm">
                             <div className="flex justify-end gap-2">
                                 <Button size="sm" variant="secondary" asChild className="rounded-xl">
-                                    <Link href={`/recipes/${r.id}`}>Abrir</Link>
+                                    <Link href={`/dashboard/recipes/${r.id}`}>Abrir</Link>
                                 </Button>
 
                                 {/* Duplicar */}
                                 <form
                                     action={async (fd) => {
                                         fd.set("id", r.id);
-                                        const { duplicateRecipeAction } = await import("@/app/recipes/actions");
+                                        const { duplicateRecipeAction } = await import("../../app/dashboard/recipes/actions");
                                         await duplicateRecipeAction(fd);
                                     }}
                                 >
@@ -142,7 +142,7 @@ export function RecipesTable({ initialData }: { initialData: RecipeWithCountsRow
                                     action={async (fd) => {
                                         if (!confirm("Excluir receita? Isso remove também os ingredientes e itens de compras.")) return;
                                         fd.set("id", r.id);
-                                        const { deleteRecipeAction } = await import("@/app/recipes/actions");
+                                        const { deleteRecipeAction } = await import("../../app/dashboard/recipes/actions");
                                         await deleteRecipeAction(fd);
                                     }}
                                 >

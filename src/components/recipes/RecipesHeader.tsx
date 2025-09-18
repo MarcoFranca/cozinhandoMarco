@@ -23,13 +23,13 @@ export function RecipesHeader({ total }: { total: number }) {
         if (category) usp.set("category", category);
         if (difficulty) usp.set("difficulty", difficulty);
         const query = usp.toString();
-        router.replace(`/recipes${query ? `?${query}` : ""}`, { scroll: false });
+        router.replace(`/dashboard/recipes${query ? `?${query}` : ""}`, { scroll: false });
     }, [q, status, category, difficulty, router]);
 
     function openNew() {
         const usp = new URLSearchParams(Array.from(params.entries()));
         usp.set("new", "1");
-        router.replace(`/recipes?${usp.toString()}`, { scroll: false });
+        router.replace(`/dashboard/recipes?${usp.toString()}`, { scroll: false });
     }
 
     function clearFilters() {

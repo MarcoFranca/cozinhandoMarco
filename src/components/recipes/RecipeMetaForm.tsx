@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { CATEGORIES, STATUSES, DIFFICULTIES } from "@/constants/taxonomies";
-import { updateRecipeMetaAction } from "@/app/recipes/actions";
+import { updateRecipeMetaAction } from "../../app/dashboard/recipes/actions";
 
 export function RecipeMetaForm({
                                    recipe,
@@ -47,7 +47,7 @@ export function RecipeMetaForm({
                     <select
                         name="category"
                         defaultValue={recipe.category ?? ""}
-                        className="h-9 w-full rounded-md border bg-background px-2 text-sm"
+                        className="h-9 w-full rounded-md border bg-background px-2 text-sm cursor-pointer"
                     >
                         <option value="">—</option>
                         {CATEGORIES.map((c) => (
@@ -61,7 +61,7 @@ export function RecipeMetaForm({
                     <select
                         name="status"
                         defaultValue={recipe.status}
-                        className="h-9 w-full rounded-md border bg-background px-2 text-sm"
+                        className="h-9 w-full rounded-md border bg-background px-2 text-sm cursor-pointer"
                     >
                         {STATUSES.map((s) => (
                             <option key={s.value} value={s.value}>{s.label}</option>
@@ -74,7 +74,7 @@ export function RecipeMetaForm({
                     <select
                         name="difficulty"
                         defaultValue={recipe.difficulty ?? ""}
-                        className="h-9 w-full rounded-md border bg-background px-2 text-sm"
+                        className="h-9 w-full rounded-md border bg-background px-2 text-sm cursor-pointer"
                     >
                         <option value="">—</option>
                         {DIFFICULTIES.map((d) => (
@@ -83,13 +83,13 @@ export function RecipeMetaForm({
                     </select>
                 </div>
 
-                <div className="space-y-1">
+                <div className="space-y-1 ">
                     <label className="text-sm font-medium">Tempo de preparo (min)</label>
                     <Input type="number" name="prep_time_minutes" defaultValue={recipe.prep_time_minutes ?? ""} min={0} />
                 </div>
             </div>
 
-            <Button type="submit" disabled={isPending} className="rounded-xl">
+            <Button type="submit" disabled={isPending} className="rounded-xl cursor-pointer">
                 {isPending ? "Salvando..." : "Salvar alterações"}
             </Button>
         </form>

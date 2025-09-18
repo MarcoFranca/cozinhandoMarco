@@ -84,3 +84,11 @@ export async function getNextInstructionStep(
     const start = (last?.step as number | undefined) ?? 0;
     return start + 10;
 }
+
+export function slugifyPtBr(v: string) {
+    return v
+        .normalize("NFD").replace(/[\u0300-\u036f]/g, "") // remove acentos
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/(^-|-$)/g, "");
+}

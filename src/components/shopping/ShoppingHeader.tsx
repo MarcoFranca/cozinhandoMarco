@@ -39,12 +39,12 @@ export function ShoppingHeader({
     }
 
     async function clearChecked() {
-        const { clearCheckedShoppingAction } = await import("@/app/recipes/actions");
+        const { clearCheckedShoppingAction } = await import("../../app/dashboard/recipes/actions");
         await clearCheckedShoppingAction();
     }
     async function clearAll() {
         if (!confirm("Remover TODOS os itens da lista?")) return;
-        const { clearAllShoppingAction } = await import("@/app/recipes/actions");
+        const { clearAllShoppingAction } = await import("../../app/dashboard/recipes/actions");
         await clearAllShoppingAction();
     }
 

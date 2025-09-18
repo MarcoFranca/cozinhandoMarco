@@ -26,7 +26,7 @@ export function RecipeInstructions({ recipeId, items }: { recipeId: string; item
                             fd.set("recipe_id", recipeId);
                             fd.set("text", text);
                             fd.set("duration_minutes", dur);
-                            const { addInstructionAction } = await import("@/app/recipes/actions");
+                            const { addInstructionAction } = await import("../../app/dashboard/recipes/actions");
                             await addInstructionAction(fd);
                             setText(""); setDur("");
                         }}
@@ -44,7 +44,7 @@ export function RecipeInstructions({ recipeId, items }: { recipeId: string; item
                             onChange={(e) => setDur(e.target.value)}
                             placeholder="Duração (min)"
                         />
-                        <Button type="submit" className="rounded-xl">
+                        <Button type="submit" className="rounded-xl cursor-pointer">
                             <Plus className="mr-2 h-4 w-4" /> Adicionar
                         </Button>
                     </form>
@@ -70,25 +70,25 @@ export function RecipeInstructions({ recipeId, items }: { recipeId: string; item
                                         <div className="flex items-center gap-1">
                                             <form action={async (fd) => {
                                                 fd.set("id", it.id); fd.set("dir", "up");
-                                                const { moveInstructionAction } = await import("@/app/recipes/actions");
+                                                const { moveInstructionAction } = await import("../../app/dashboard/recipes/actions");
                                                 await moveInstructionAction(fd);
                                             }}>
-                                                <Button size="icon" variant="ghost"><ArrowUp className="h-4 w-4" /></Button>
+                                                <Button size="icon" variant="ghost" className={"cursor-pointer"}><ArrowUp className="h-4 w-4" /></Button>
                                             </form>
                                             <form action={async (fd) => {
                                                 fd.set("id", it.id); fd.set("dir", "down");
-                                                const { moveInstructionAction } = await import("@/app/recipes/actions");
+                                                const { moveInstructionAction } = await import("../../app/dashboard/recipes/actions");
                                                 await moveInstructionAction(fd);
                                             }}>
-                                                <Button size="icon" variant="ghost"><ArrowDown className="h-4 w-4" /></Button>
+                                                <Button size="icon" variant="ghost" className={"cursor-pointer"}><ArrowDown className="h-4 w-4" /></Button>
                                             </form>
                                             <form action={async (fd) => {
                                                 if (!confirm("Remover passo?")) return;
                                                 fd.set("id", it.id);
-                                                const { deleteInstructionAction } = await import("@/app/recipes/actions");
+                                                const { deleteInstructionAction } = await import("../../app/dashboard/recipes/actions");
                                                 await deleteInstructionAction(fd);
                                             }}>
-                                                <Button size="icon" variant="destructive" className="rounded-xl"><Trash2 className="h-4 w-4" /></Button>
+                                                <Button size="icon" variant="destructive" className="rounded-xl cursor-pointer"><Trash2 className="h-4 w-4" /></Button>
                                             </form>
                                         </div>
                                     </div>
@@ -98,13 +98,13 @@ export function RecipeInstructions({ recipeId, items }: { recipeId: string; item
                                         className="grid grid-cols-1 gap-2 md:grid-cols-[1fr_140px_auto]"
                                         action={async (fd) => {
                                             fd.set("id", it.id);
-                                            const { updateInstructionAction } = await import("@/app/recipes/actions");
+                                            const { updateInstructionAction } = await import("../../app/dashboard/recipes/actions");
                                             await updateInstructionAction(fd);
                                         }}
                                     >
                                         <Textarea name="text" defaultValue={it.text} rows={2} />
                                         <Input name="duration_minutes" type="number" min={0} defaultValue={it.duration_minutes ?? ""} placeholder="min" />
-                                        <Button type="submit" size="sm" variant="secondary" className="rounded-xl">Salvar</Button>
+                                        <Button type="submit" size="sm" variant="secondary" className="rounded-xl cursor-pointer">Salvar</Button>
                                     </form>
                                 </li>
                             ))}

@@ -89,3 +89,9 @@ export const RECORDING_STATUS_LABELS: Record<RecordingStatus, string> =
 export function isRecordingStatus(v: unknown): v is RecordingStatus {
     return RECORDING_STATUSES.some(s => s.value === v);
 }
+
+export const SITE_OVERRIDES = [
+    { value: "auto", label: "Automático (publica ao marcar Postado)" },
+    { value: "forcar_exibir", label: "Forçar exibir (mesmo sem Postado)" },
+    { value: "forcar_ocultar", label: "Forçar ocultar (mesmo Postado)" },
+] as const;
