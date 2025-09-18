@@ -24,7 +24,6 @@ import {
     statusLabel,
     difficultyLabel,
 } from "@/constants/taxonomies";
-import {RecipeSiteDialog} from "@/components/recipes/RecipeSiteDialog";
 
 // 👇 form com selects (novo componente abaixo)
 export const dynamic = "force-dynamic";

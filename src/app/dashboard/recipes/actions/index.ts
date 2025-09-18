@@ -104,3 +104,9 @@ export async function convertIngredientsFromTextAction(fd: FormData) {
     const m = await import("./legacy");
     return m.convertIngredientsFromTextAction(fd);
 }
+
+/** 👇 NOVO: action específica para campos do site (edição parcial!) */
+export async function updateRecipeSiteAction(fd: FormData) {
+    const m = await import("./site");
+    return m.updateRecipeSiteAction(fd);
+}

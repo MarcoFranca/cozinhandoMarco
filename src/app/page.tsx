@@ -49,53 +49,64 @@ export default async function Page() {
         </header>
 
         <section className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          {recipes.map((r) => (
-              <article key={r.site_slug} className="rounded-2xl border bg-card shadow-sm overflow-hidden">
-                <div className="relative aspect-video">
-                  {r.cover_url ? (
-                      <Image src={r.cover_url} alt={r.name} fill className="object-cover" />
-                  ) : (
-                      <div className="absolute inset-0 grid place-items-center text-sm text-muted-foreground">
-                        Sem imagem
-                      </div>
-                  )}
-                </div>
+          {recipes.map((r) => {
+            const thumb = r.cover_url || getYoutubeThumb(r.youtube_url);
 
-                <div className="p-4 space-y-3">
-                  <h2 className="text-lg font-semibold">{r.name}</h2>
-                  <p className="text-sm text-muted-foreground line-clamp-2">
-                    {r.short_description}
-                  </p>
-
-                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                    {r.prep_time_minutes != null && <span>⏱ {r.prep_time_minutes} min</span>}
-                    {r.difficulty && <span>• ⭐ {r.difficulty}</span>}
-                    {r.category && <span>• {r.category}</span>}
-                  </div>
-
-                  <div className="flex gap-2 pt-1">
-                    {r.youtube_url && (
-                        <a
-                            className="inline-flex items-center rounded-full border px-3 py-1 text-sm hover:bg-accent"
-                            href={r.youtube_url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                        >
-                          Assistir no YouTube
-                        </a>
+            return (
+                <article key={r.site_slug} className="rounded-2xl border bg-card shadow-sm overflow-hidden">
+                  <div className="relative aspect-video">
+                    {thumb ? (
+                        <Image src={thumb} alt={r.name} fill className="object-cover" />
+                    ) : (
+                        <div className="absolute inset-0 grid place-items-center text-sm text-muted-foreground">
+                          Sem imagem
+                        </div>
                     )}
-
-                    <Link
-                        className="inline-flex items-center rounded-full bg-primary px-3 py-1 text-sm text-primary-foreground hover:opacity-90"
-                        href={`/receitas/${r.site_slug}`}
-                    >
-                      Ver receita
-                    </Link>
                   </div>
-                </div>
-              </article>
-          ))}
+
+                  <div className="p-4 space-y-3">
+                    <h2 className="text-lg font-semibold">{r.name}</h2>
+                    <p className="text-sm text-muted-foreground line-clamp-2">
+                      {r.short_description}
+                    </p>
+
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                      {r.prep_time_minutes != null && <span>⏱ {r.prep_time_minutes} min</span>}
+                      {r.difficulty && <span>• ⭐ {r.difficulty}</span>}
+                      {r.category && <span>• {r.category}</span>}
+                    </div>
+
+                    <div className="flex gap-2 pt-1">
+                      {r.youtube_url && (
+                          <a
+                              className="inline-flex items-center rounded-full border px-3 py-1 text-sm hover:bg-accent"
+                              href={r.youtube_url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                          >
+                            Assistir no YouTube
+                          </a>
+                      )}
+
+                      <Link
+                          className="inline-flex items-center rounded-full bg-primary px-3 py-1 text-sm text-primary-foreground hover:opacity-90"
+                          href={`/receitas/${r.site_slug}`}
+                      >
+                        Ver receita
+                      </Link>
+                    </div>
+                  </div>
+                </article>
+            );
+          })}
         </section>
       </main>
   );
+}
+
+export function getYoutubeThumb(url?: string | null) {
+  if (!url) return null;
+  const m = url.match(/[?&]v=([^&#]+)/) || url.match(/youtu\.be\/([^?&#]+)/);
+  const id = m?.[1];
+  return id ? `https://i.ytimg.com/vi/${id}/hqdefault.jpg` : null;
 }

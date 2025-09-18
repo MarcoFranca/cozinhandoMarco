@@ -1,9 +1,18 @@
 import {withSentryConfig} from "@sentry/nextjs";
-import type { NextConfig } from "next";
-
-const nextConfig: NextConfig = {
-  /* config options here */
+/** @type {import('next').NextConfig} */
+const nextConfig = {
+  images: {
+    remotePatterns: [
+      { protocol: "https", hostname: "i.ytimg.com" },
+      {
+        protocol: "https",
+        hostname: "badehdouytiqihsmeekq.supabase.co",
+        pathname: "/storage/v1/object/public/recipe-assets/**",
+      },
+    ],
+  },
 };
+module.exports = nextConfig;
 
 export default withSentryConfig(nextConfig, {
   // For all available options, see:
@@ -37,3 +46,4 @@ export default withSentryConfig(nextConfig, {
   // https://vercel.com/docs/cron-jobs
   automaticVercelMonitors: true
 });
+
