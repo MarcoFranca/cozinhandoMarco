@@ -10,7 +10,7 @@ export function HomeRecentDrafts({ items }: { items: Draft[] }) {
         <Card className="rounded-2xl">
             <CardHeader className="flex-row items-center justify-between">
                 <CardTitle>Rascunhos Recentes</CardTitle>
-                <Link href="/recipes" className="text-sm text-muted-foreground hover:underline">
+                <Link href="/dashboard/recipes" className="text-sm text-muted-foreground hover:underline">
                     Ver todos
                 </Link>
             </CardHeader>
@@ -21,7 +21,7 @@ export function HomeRecentDrafts({ items }: { items: Draft[] }) {
                     items.map((d) => (
                         <Link
                             key={d.id}
-                            href={`/recipes/${d.id}`}
+                            href={`/dashboard/recipes/${d.id}`}
                             className="group flex items-center justify-between rounded-lg border p-3 hover:bg-muted/50 cursor-pointer transition-colors"
                             aria-label={`Abrir rascunho ${d.name}`}
                         >

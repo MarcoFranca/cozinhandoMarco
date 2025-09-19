@@ -3,15 +3,16 @@ import {withSentryConfig} from "@sentry/nextjs";
 const nextConfig = {
   images: {
     remotePatterns: [
+      // YouTube thumbnails
       { protocol: "https", hostname: "i.ytimg.com" },
-      {
-        protocol: "https",
-        hostname: "badehdouytiqihsmeekq.supabase.co",
-        pathname: "/storage/v1/object/public/recipe-assets/**",
-      },
+      // Se usar esse domínio alternativo:
+      { protocol: "https", hostname: "img.youtube.com" },
+      // Supabase Storage (ajuste seu domínio)
+      { protocol: "https", hostname: "**.supabase.co" },
     ],
   },
 };
+
 module.exports = nextConfig;
 
 export default withSentryConfig(nextConfig, {
