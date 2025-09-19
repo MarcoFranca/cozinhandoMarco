@@ -4,7 +4,7 @@ import { useTransition } from "react";
 import { Button } from "@/components/ui/button";
 
 export function LegacyIngredientsBanner({ recipeId, hasLegacy }: { recipeId: string; hasLegacy: boolean }) {
-    const [pending, start] = useTransition();
+    const [pending] = useTransition();
     if (!hasLegacy) return null;
 
     return (

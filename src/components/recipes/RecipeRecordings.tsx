@@ -95,7 +95,7 @@ function formatDateBR(isoDate: string | null): string {
 
 function RecordingItem({ row }: { row: RecordingRow }) {
     const [edit, setEdit] = useState(false);
-    const [isPending, startTransition] = useTransition();
+    const [_isPending, startTransition] = useTransition();
     const router = useRouter();
 
     async function onUpdate(formData: FormData) {

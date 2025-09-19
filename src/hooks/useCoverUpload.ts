@@ -4,6 +4,13 @@ import { useRef, useState } from "react";
 import { toast } from "sonner";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 
+// helper para extrair mensagem de erro de forma type-safe
+function getErrorMessage(err: unknown): string {
+    if (err instanceof Error) return err.message;
+    if (typeof err === "string") return err;
+    try { return JSON.stringify(err); } catch { return "Erro desconhecido."; }
+}
+
 export function useCoverUpload(initialUrl?: string | null) {
     const [uploading, setUploading] = useState(false);
     const [coverUrl, setCoverUrl] = useState<string>(initialUrl ?? "");
@@ -25,7 +32,6 @@ export function useCoverUpload(initialUrl?: string | null) {
             const ext = file.name.split(".").pop()?.toLowerCase() || "jpg";
             const path = `${user.id}/recipes/${recipeId}/cover-${Date.now()}.${ext}`;
 
-            // Bucket correto
             const { error: upErr } = await supabase.storage
                 .from("recipe-assets")
                 .upload(path, file, { upsert: false, cacheControl: "3600" });
@@ -40,9 +46,11 @@ export function useCoverUpload(initialUrl?: string | null) {
             setCoverUrl(pub.publicUrl);
             toast("Upload concluído!");
             return pub.publicUrl;
-        } catch (e: any) {
+        } catch (e: unknown) {
+            const msg = getErrorMessage(e);
+            // mantém log detalhado no console e mostra toast elegante
             console.error(e);
-            toast.error(e?.message ?? "Falha ao enviar imagem.");
+            toast.error(msg || "Falha ao enviar imagem.");
         } finally {
             setUploading(false);
         }

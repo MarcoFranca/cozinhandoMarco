@@ -6,7 +6,7 @@ import { useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { ArrowUpDown, Copy, Trash2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import type { RecipeWithCountsRow, RecipeStatus, Difficulty } from "@/types/db";
+import type { RecipeWithCountsRow, RecipeStatus } from "@/types/db";
 import { categoryLabel, statusLabel, difficultyLabel } from "@/constants/taxonomies";
 
 type SortKey = keyof Pick<

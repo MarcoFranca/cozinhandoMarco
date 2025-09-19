@@ -1,15 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { APP_ROUTES, isActive } from "@/constants/routes";
 import { Button } from "@/components/ui/button";
-import { Plus, LogOut } from "lucide-react";
-import {signOutAction} from "@/app/actions-auth";
+import { LogOut } from "lucide-react";
 
 export function AppNavbar() {
     const pathname = usePathname();
-    const router = useRouter();
 
     return (
         <header className="sticky top-0 z-40 w-full border-b bg-background/80 backdrop-blur">
