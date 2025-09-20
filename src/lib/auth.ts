@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { createSupabaseRSCClient } from "@/lib/supabase/server-rsc";
+import {createSupabaseServerActionClient} from "@/lib/supabase/server-actions";
 
 // type guard para detectar "Auth session missing" sem usar any
 function isAuthMissing(err: unknown): boolean {
@@ -36,4 +37,14 @@ export async function requireUser() {
         }
         throw e;
     }
+}
+
+export async function requireUserServerAction() {
+    const supabase = await createSupabaseServerActionClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+        // Em Server Actions não redirecionamos; lance um erro e trate no caller.
+        throw new Error("Não autenticado.");
+    }
+    return { user };
 }

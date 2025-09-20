@@ -1,50 +1,106 @@
 "use client";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import Link from "next/link";
-import { categoryLabel, statusLabel, difficultyLabel } from "@/constants/taxonomies";
-import { RecipeMetaDialog } from "./RecipeMetaDialog";
-import {toast} from "sonner";
-import {RecipeForOverview} from "@/types/db";
-import {RecipeSiteDialog} from "@/components/recipes/RecipeSiteDialog";
+import { labelForCategory, labelForStatus, labelForDifficulty } from "@/lib/taxonomies";
+import { RecipeSiteSheet } from "@/components/recipes/RecipeSiteSheet";
+import { RecipeMetaSheet } from "@/components/recipes/RecipeMetaSheet";
+import {RecipeAdvancedTaxonomiesSheet} from "@/components/recipes/RecipeAdvancedTaxonomiesSheet";
+
+type RecipeOverviewRecipe = {
+    id: string;
+    name: string;
+    status: string | null;
+    prep_time_minutes: number | null;
+    difficulty_slug: string | null;
+    site_slug: string | null;
+    site_override: import("@/lib/taxonomies/guards").SiteOverride | null;
+    preferir_link_youtube: boolean | null;
+    site_order: number | null;
+    short_description: string | null;
+    publicado_at: string | null;
+    youtube_url: string | null;
+    cover_url: string | null;
+};
 
 export function RecipeOverview({
                                    recipe,
                                    ingredientsCount,
                                    instructionsCount,
                                    totalDuration,
+                                   primaryCategorySlug,
+                                   allCategorySlugs,
+                                   cuisineSlugs,
+                                   dietSlugs,
+                                   techniqueSlugs,
+                                   occasionSlugs,
                                }: {
-    recipe: RecipeForOverview;
+    recipe: RecipeOverviewRecipe;
     ingredientsCount: number;
     instructionsCount: number;
     totalDuration: number;
+    primaryCategorySlug?: string | null;
+    allCategorySlugs?: string[];
+    cuisineSlugs?: string[];
+    dietSlugs?: string[];
+    techniqueSlugs?: string[];
+    occasionSlugs?: string[];
 }) {
     return (
         <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-            {/* Progresso */}
+            {/* Painel principal */}
             <Card className="rounded-2xl h-full">
                 <CardHeader>
                     <CardTitle>Receita</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                    <KV label="Nome" value={recipe.name}/>
+                    <KV label="Nome" value={recipe.name} />
                     <div className="grid grid-cols-2 gap-3">
-                        <KV label="Categoria" value={categoryLabel(recipe.category)}/>
-                        <KV label="Tempo (min)" value={recipe.prep_time_minutes ?? "—"}/>
+                        <KV label="Categoria" value={labelForCategory(primaryCategorySlug)} />
+                        <KV label="Tempo (min)" value={recipe.prep_time_minutes ?? "—"} />
                     </div>
                     <div className="grid grid-cols-2 gap-3">
-                        <KV label="Status" value={statusLabel(recipe.status)}/>
-                        <KV label="Dificuldade" value={difficultyLabel(recipe.difficulty)}/>
+                        <KV label="Status" value={labelForStatus(recipe.status)} />
+                        <KV label="Dificuldade" value={labelForDifficulty(recipe.difficulty_slug)} />
                     </div>
 
-                    <div className="pt-2">
-                        <div className="pt-2">
-                            <RecipeMetaDialog recipe={recipe}/>
-                        </div>
+                    {/* Botão abre o Sheet */}
+                    <div className="pt-2 flex flex-wrap gap-2">
+                        <RecipeMetaSheet
+                            recipe={{
+                                id: recipe.id,
+                                name: recipe.name,
+                                prep_time_minutes: recipe.prep_time_minutes,
+                                status: recipe.status,
+                                difficulty_slug: recipe.difficulty_slug,
+                                // passe TODAS as categorias ordenadas (inclua a primária)
+                                category_slugs: allCategorySlugs ?? (primaryCategorySlug ? [primaryCategorySlug] : []),
+                            }}
+                        />
+                        <RecipeSiteSheet
+                            recipe={{
+                                id: recipe.id,
+                                site_slug: recipe.site_slug,
+                                site_override: recipe.site_override,
+                                preferir_link_youtube: recipe.preferir_link_youtube,
+                                site_order: recipe.site_order,
+                                short_description: recipe.short_description,
+                                publicado_at: recipe.publicado_at,
+                                youtube_url: recipe.youtube_url,
+                                cover_url: recipe.cover_url,
+                            }}
+                        />
+                        <RecipeAdvancedTaxonomiesSheet
+                            recipe={{
+                                id: recipe.id,
+                                cuisine_slugs: cuisineSlugs ?? [],
+                                diet_slugs: dietSlugs ?? [],
+                                technique_slugs: techniqueSlugs ?? [],
+                                occasion_slugs: occasionSlugs ?? [],
+                            }}
+                        />
                     </div>
                 </CardContent>
-
             </Card>
 
             {/* Resumo */}
@@ -54,74 +110,49 @@ export function RecipeOverview({
                 </CardHeader>
                 <CardContent className="space-y-4">
                     <div className="grid grid-cols-2 gap-3">
-                        <Bubble label="Ingredientes" value={ingredientsCount}
-                                href={`/recipes/${recipe.id}?tab=ingredients`}/>
-                        <Bubble label="Instruções" value={instructionsCount}
-                                href={`/recipes/${recipe.id}?tab=instructions`}/>
+                        <Bubble
+                            label="Ingredientes"
+                            value={ingredientsCount}
+                            href={`/dashboard/recipes/${recipe.id}?tab=ingredients`}
+                        />
+                        <Bubble
+                            label="Instruções"
+                            value={instructionsCount}
+                            href={`/dashboard/recipes/${recipe.id}?tab=instructions`}
+                        />
                     </div>
-                    <KV label="Duração total" value={`${totalDuration} min`}/>
-
-                    <form
-                        action={async (fd) => {
-                            fd.set("recipe_id", recipe.id);
-                            fd.set("include_optionals", "1");
-                            const {pushIngredientsToShoppingAction} = await import("../../app/dashboard/recipes/actions");
-                            await pushIngredientsToShoppingAction(fd);
-                            toast("Enviado para lista.")
-                        }}
-                    >
-                        <Button type="submit" className="rounded-xl cursor-pointer">Enviar p/ Compras</Button>
-                    </form>
-
+                    <KV label="Duração total" value={`${totalDuration} min`} />
                 </CardContent>
             </Card>
+
+            {/* Site/publicação (leitura) */}
             <div className="mt-4 rounded-xl border p-3">
                 <div className="mb-2 text-sm font-medium">Site (publicação)</div>
                 <div className="grid grid-cols-2 gap-3 text-sm">
-                    <KV label="Slug público" value={recipe.site_slug ?? "—"}/>
-                    <KV label="Visibilidade" value={recipe.site_override ?? "—"}/>
-                    <KV label="Preferir YouTube?" value={recipe.preferir_link_youtube ? "Sim" : "Não"}/>
-                    <KV label="Ordem na Home" value={recipe.site_order ?? "—"}/>
-                    <KV label="Publicado em"
-                        value={recipe.publicado_at ? new Date(recipe.publicado_at).toLocaleString("pt-BR") : "—"}/>
-                    <KV label="Descrição curta (SEO)" value={recipe.short_description ?? "—"}/>
+                    <KV label="Slug público" value={recipe.site_slug ?? "—"} />
+                    <KV label="Visibilidade" value={recipe.site_override ?? "—"} />
+                    <KV label="Preferir YouTube?" value={recipe.preferir_link_youtube ? "Sim" : "Não"} />
+                    <KV label="Ordem na Home" value={recipe.site_order ?? "—"} />
+                    <KV
+                        label="Publicado em"
+                        value={recipe.publicado_at ? new Date(recipe.publicado_at).toLocaleString("pt-BR") : "—"}
+                    />
+                    <KV label="Descrição curta (SEO)" value={recipe.short_description ?? "—"} />
                 </div>
 
-                {/* Link para a página pública, se já houver slug */}
                 {recipe.site_slug && (
                     <div className="pt-3">
-                        <a
-                            href={`/receitas/${recipe.site_slug}`}
-                            target="_blank"
-                            className="text-sm underline"
-                        >
+                        <a href={`/receitas/${recipe.site_slug}`} target="_blank" className="text-sm underline">
                             Abrir página pública
                         </a>
                     </div>
                 )}
-
-                {/* Botão para editar (abre modal RecipeMetaDialog) */}
-                <div className="pt-3">
-                    <RecipeSiteDialog
-                        recipe={{
-                            id: recipe.id,
-                            site_slug: recipe.site_slug,
-                            site_override: recipe.site_override,
-                            preferir_link_youtube: recipe.preferir_link_youtube,
-                            site_order: recipe.site_order,
-                            short_description: recipe.short_description,
-                            publicado_at: recipe.publicado_at,
-                            youtube_url: recipe.youtube_url,
-                            cover_url: recipe.cover_url,
-                        }}
-                    />
-                </div>
             </div>
         </div>
     );
 }
 
-function KV({label, value}: { label: string; value: React.ReactNode }) {
+function KV({ label, value }: { label: string; value: React.ReactNode }) {
     return (
         <div className="flex flex-col">
             <span className="text-xs text-muted-foreground">{label}</span>
@@ -130,7 +161,7 @@ function KV({label, value}: { label: string; value: React.ReactNode }) {
     );
 }
 
-function Bubble({label, value, href}: { label: string; value: number | string; href: string }) {
+function Bubble({ label, value, href }: { label: string; value: number | string; href: string }) {
     return (
         <Link
             href={href}

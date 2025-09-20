@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { ArrowUpDown, Copy, Trash2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import type { RecipeWithCountsRow, RecipeStatus } from "@/types/db";
-import { categoryLabel, statusLabel, difficultyLabel } from "@/constants/taxonomies";
+import { labelForCategory, labelForStatus, labelForDifficulty } from "@/lib/taxonomies/labels";
 
 type SortKey = keyof Pick<
     RecipeWithCountsRow,
@@ -108,12 +108,12 @@ export function RecipesTable({ initialData }: { initialData: RecipeWithCountsRow
                                 {r.name}
                             </Link>
                         </td>
-                        <td className="px-4 py-3 text-sm">{categoryLabel(r.category)}</td>
+                        <td className="px-4 py-3 text-sm">{labelForCategory(r.category)}</td>
                         <td className="px-4 py-3 text-sm">
-                            <Badge variant="secondary">{statusLabel(r.status)}</Badge>
+                            <Badge variant="secondary">{labelForStatus(r.status)}</Badge>
                         </td>
                         <td className="px-4 py-3 text-sm text-right">{r.prep_time_minutes ?? "—"}</td>
-                        <td className="px-4 py-3 text-sm">{difficultyLabel(r.difficulty)}</td>
+                        <td className="px-4 py-3 text-sm">{labelForDifficulty (r.difficulty)}</td>
                         <td className="px-4 py-3 text-sm text-right">{r.ingredients_count}</td>
                         <td className="px-4 py-3 text-sm">
                             {new Date(r.updated_at).toLocaleDateString("pt-BR")}

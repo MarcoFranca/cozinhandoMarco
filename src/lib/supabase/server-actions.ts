@@ -1,6 +1,7 @@
 import { cookies } from "next/headers";
 import { createServerClient } from "@supabase/ssr";
 
+/** Server Actions: leitura+escrita de cookies (mantém sessão) */
 export async function createSupabaseServerActionClient() {
     const cookieStore = await cookies();
     return createServerClient(

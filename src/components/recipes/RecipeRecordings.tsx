@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Trash2, Pencil, Save } from "lucide-react";
 import type { RecordingRow } from "@/types/db";
-import { RECORDING_STATUSES, RECORDING_STATUS_LABELS, isRecordingStatus } from "@/constants/taxonomies";
+import { RECORDING_STATUSES, RECORDING_STATUS_LABELS, isRecordingStatus } from "@/lib/taxonomies";
 
 export function RecipeRecordings({
                                      recipeId,
