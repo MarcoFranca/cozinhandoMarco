@@ -15,20 +15,30 @@ function n(v: FormDataEntryValue | null) {
     const num = Number(x);
     return Number.isFinite(num) ? Math.trunc(num) : null;
 }
+type SupaClient = Awaited<ReturnType<typeof createSupabaseServerActionClient>>;
 
 /** Resolve uma technique_id a partir de um technique slug. */
-async function resolveTechniqueId(supabase: any, slug: string | null) {
+async function resolveTechniqueId(supabase: SupaClient, slug: string | null) {
     if (!slug) return null;
     const { data, error } = await supabase
         .from("techniques")
         .select("id, slug")
         .eq("slug", slug)
-        .maybeSingle();
+        .maybeSingle<{ id: string; slug: string }>();
     if (error) throw new Error("Falha ao resolver técnica.");
     return data?.id ?? null;
 }
 
 /* ============ INSTRUCTIONS ============ */
+
+type InstructionInsert = {
+    user_id: string;
+    recipe_id: string;
+    step: number;
+    text: string;
+    duration_minutes: number | null;
+    technique_id?: string | null;
+};
 
 export async function addInstructionAction(fd: FormData) {
     const { user } = await requireUser();
@@ -40,11 +50,9 @@ export async function addInstructionAction(fd: FormData) {
     const text = s(fd.get("text"));
     const duration_minutes = n(fd.get("duration_minutes"));
 
-    // novo: técnica opcional por slug
     const technique_slug = s(fd.get("technique_slug"));
     const technique_id = await resolveTechniqueId(supabase, technique_slug);
 
-    // checa ownership
     const { data: recipe, error: recErr } = await supabase
         .from("recipes")
         .select("id, user_id, site_slug")
@@ -53,25 +61,25 @@ export async function addInstructionAction(fd: FormData) {
         .single();
     if (recErr || !recipe) throw new Error("Receita não encontrada ou sem permissão.");
 
-    // calcular próximo step
-    const { data: last, error: stepErr } = await supabase
+    // calcular próximo step (removido stepErr não usado)
+    const { data: last } = await supabase
         .from("recipe_instructions")
         .select("step")
         .eq("recipe_id", recipe_id)
         .eq("user_id", user.id)
         .order("step", { ascending: false })
         .limit(1)
-        .maybeSingle();
+        .maybeSingle<{ step: number }>();
     const nextStep = (last?.step ?? 0) + 1;
 
-    const payload: any = {
+    const payload: InstructionInsert = {
         user_id: user.id,
         recipe_id,
         step: nextStep,
         text: text ?? "",
         duration_minutes,
+        ...(technique_id ? { technique_id } : {}),
     };
-    if (technique_id) payload.technique_id = technique_id;
 
     const { error: insErr } = await supabase.from("recipe_instructions").insert(payload);
     if (insErr) throw new Error("Falha ao criar passo.");
@@ -93,19 +101,21 @@ export async function updateInstructionAction(fd: FormData) {
     const technique_slug = s(fd.get("technique_slug"));
     const technique_id = await resolveTechniqueId(supabase, technique_slug);
 
-    // pega recipe_id para revalidate
     const { data: instr, error: getErr } = await supabase
         .from("recipe_instructions")
         .select("id, recipe_id, user_id")
         .eq("id", id)
         .eq("user_id", user.id)
-        .single();
+        .single<{ id: string; recipe_id: string; user_id: string }>();
     if (getErr || !instr) throw new Error("Passo não encontrado.");
 
-    const upd: any = {};
+    const upd: Partial<{
+        text: string;
+        duration_minutes: number | null;
+        technique_id: string | null;
+    }> = {};
     if (text !== null) upd.text = text;
     if (duration_minutes !== null) upd.duration_minutes = duration_minutes;
-    // permitir limpar técnica: technique_slug vazio => zera technique_id
     if (technique_slug !== null) upd.technique_id = technique_id;
 
     const { error: upErr } = await supabase
@@ -115,12 +125,11 @@ export async function updateInstructionAction(fd: FormData) {
         .eq("user_id", user.id);
     if (upErr) throw new Error("Falha ao atualizar passo.");
 
-    // slug público se existir
     const { data: recipe } = await supabase
         .from("recipes")
         .select("site_slug")
         .eq("id", instr.recipe_id)
-        .single();
+        .single<{ site_slug: string | null }>();
 
     revalidatePath(`/dashboard/recipes/${instr.recipe_id}?tab=instructions`);
     if (recipe?.site_slug) revalidatePath(`/receitas/${recipe.site_slug}`);
@@ -145,15 +154,16 @@ export async function moveInstructionAction(fd: FormData) {
 
     const neighborOrder = dir === "up" ? { ascending: false } : { ascending: true };
     const neighborOp = dir === "up" ? "<" : ">";
+
     const { data: neighbor } = await supabase
         .from("recipe_instructions")
         .select("id, step")
         .eq("recipe_id", cur.recipe_id)
         .eq("user_id", user.id)
-        .filter("step", neighborOp as any, cur.step)
+        .filter("step", neighborOp, cur.step)  // <-- sem 'as any'
         .order("step", neighborOrder)
         .limit(1)
-        .maybeSingle();
+        .maybeSingle<{ id: string; step: number }>();
 
     if (!neighbor) return { ok: true };
 
@@ -290,10 +300,16 @@ export async function updateTipAction(fd: FormData) {
 
     if (!id) throw new Error("id da dica é obrigatório.");
 
-    const upd: any = {};
-    if (title !== null) upd.title = title;
-    if (text !== null) upd.text = text;
-    if (type !== null) upd.type = type;
+    // ✅ sem any: aceita undefined (não atualiza) e null (limpa campo)
+    const upd: Partial<{
+        title: string | null;
+        text: string | null;
+        type: TipType | null;
+    }> = {};
+
+    if (title !== null) upd.title = title; // string ou null
+    if (text !== null) upd.text = text;    // string ou null
+    if (type !== null) upd.type = type;    // TipType ou null
 
     const { error, data } = await supabase
         .from("recipe_tips")
@@ -301,7 +317,8 @@ export async function updateTipAction(fd: FormData) {
         .eq("id", id)
         .eq("user_id", user.id)
         .select("recipe_id")
-        .single();
+        .single<{ recipe_id: string }>();
+
     if (error) throw new Error("Falha ao atualizar dica.");
 
     revalidatePath(`/dashboard/recipes/${data.recipe_id}?tab=ingredients`);
