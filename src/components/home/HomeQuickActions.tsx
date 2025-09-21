@@ -2,15 +2,14 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-import { Plus, Calendar, ListChecks, Search, LogOut } from "lucide-react";
+import { Calendar, ListChecks, } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useCallback } from "react";
 // 👇 importa a server action
-import { signOutAction } from "@/app/actions-auth";
 
 export function HomeQuickActions() {
     const router = useRouter();
-    const handleNewRecipe = useCallback(() => router.push("/dashboard/recipes?new=1"), [router]);
+    useCallback(() => router.push("/dashboard/recipes?new=1"), [router]);
     const handleOpenShopping = useCallback(() => router.push("/dashboard/shopping"), [router]);
     const handleSchedule = useCallback(() => router.push("/dashboard/recipes?tab=recording"), [router]);
 

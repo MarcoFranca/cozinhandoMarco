@@ -19,14 +19,6 @@ import {
 
 export const revalidate = 300;
 
-// Helper to normalize Map | Record into a plain Record<string, T[]>
-function normalizeTipsByIngredient<T>(value: Map<string, T[]> | Record<string, T[]>): Record<string, T[]> {
-    if (value instanceof Map) {
-        return Object.fromEntries(value.entries());
-    }
-    return value;
-}
-
 export default async function Page({ params }: { params: { slug: string } }) {
     const detail = await fetchBaseDetail(params.slug);
     if (!detail) {
@@ -52,11 +44,6 @@ export default async function Page({ params }: { params: { slug: string } }) {
     const tipsByInstruction = groupTipsByInstruction(tips);
     const tipsByIngredientMap = groupTipsByIngredient(tips);
 
-    const tipsByIngredientObj =
-        tipsByIngredientMap instanceof Map
-            ? Object.fromEntries(tipsByIngredientMap)
-            : tipsByIngredientMap; // se o helper já devolver objeto, mantemos
-
     const {
         name,
         cover_url,
@@ -66,7 +53,6 @@ export default async function Page({ params }: { params: { slug: string } }) {
         difficulty_slug,
         description,
         short_description, // <-- make sure loader returns this
-        ingredients,
     } = detail;
 
     const longDescription = description ?? short_description ?? null;
