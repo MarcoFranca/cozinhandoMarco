@@ -35,6 +35,7 @@ export async function updateRecipeMetaAction(fd: FormData) {
     const prep_time_minutes = normalizeInt(fd.get("prep_time_minutes"));
     const status = normalizeSlug(fd.get("status"));
     const difficulty_slug = normalizeSlug(fd.get("difficulty_slug"));
+    type CategoryRow = { id: string; slug: string };
 
     // categorias (ordem) — pode vir vazio (quer dizer "limpar tudo")
     const categoriesPresent = fd.get("categories_present"); // hidden marker no form
@@ -102,17 +103,19 @@ export async function updateRecipeMetaAction(fd: FormData) {
 
         // 2) Se houver seleção, resolve IDs (e semeia se necessário)
         if (categorySlugs.length > 0) {
-            const { data: catRows, error: catErr } = await supabase
+            const { data: catRowsInitial, error: catErr } = await supabase
                 .from("categories")
                 .select("id, slug")
                 .in("slug", categorySlugs);
 
             if (catErr) {
-                // console.error("SELECT categories error:", catErr);
                 throw new Error("Falha ao resolver categorias.");
             }
 
-            const foundSlugs = new Set((catRows ?? []).map((c) => c.slug));
+// usamos uma variável mutável, tipada, sem 'any'
+            let categoryRows: CategoryRow[] = (catRowsInitial ?? []) as CategoryRow[];
+
+            const foundSlugs = new Set(categoryRows.map((c) => c.slug));
             const missing = categorySlugs.filter((s) => !foundSlugs.has(s));
 
             if (missing.length > 0) {
@@ -123,14 +126,12 @@ export async function updateRecipeMetaAction(fd: FormData) {
                         .from("categories")
                         .select("id, slug")
                         .in("slug", categorySlugs);
+
                     if (seededErr) throw new Error("Falha ao resolver categorias (após seed).");
-                    if (!seededRows || seededRows.length === 0) {
-                        throw new Error("Categorias não encontradas (após seed).");
-                    }
-                    // substitui
-                    (catRows as any) = seededRows;
+
+                    // ✅ corrigido: usar 'seededRows' (sem 'seedingRows') e tipar
+                    categoryRows = (seededRows ?? []) as CategoryRow[];
                 } else {
-                    // ❗ Fail-fast com mensagem clara para você seedar antes
                     throw new Error(
                         `Categorias ausentes na taxonomia: ${missing.join(
                             ", "
@@ -139,8 +140,9 @@ export async function updateRecipeMetaAction(fd: FormData) {
                 }
             }
 
+
             // 3) Monta vínculos na ordem (+10) e insere
-            const slugToId = new Map(catRows!.map((c) => [c.slug, c.id]));
+            const slugToId = new Map(categoryRows.map((c) => [c.slug, c.id]));
             const rowsToInsert = categorySlugs
                 .map((slug, idx) => {
                     const category_id = slugToId.get(slug);

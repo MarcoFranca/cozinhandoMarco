@@ -185,8 +185,10 @@ export default async function RecipePage({ params, searchParams }: Props) {
     });
 
 // 3) Mapear technique_id -> label
+    type TechniqueRow = { id: string; slug: string; label_ptbr: string };
     const techniqueById: Record<string, { slug: string; label: string }> = {};
-    (techData ?? []).forEach((t: any) => {
+    const techniqueRows = (techData ?? []) as TechniqueRow[];
+    techniqueRows.forEach((t) => {
         techniqueById[t.id] = { slug: t.slug, label: t.label_ptbr };
     });
 
@@ -327,11 +329,12 @@ export default async function RecipePage({ params, searchParams }: Props) {
             {tab === "instructions" && (
                 <RecipeInstructions
                     recipeId={recipeId}
-                    items={inst as any}
+                    items={inst}
                     tipsByInstruction={tipsByInstruction}
                     techniqueById={techniqueById}
                 />
-            )}            {tab === "recording" && <RecipeRecordings recipeId={recipeId} items={recs} />}
+            )}
+            {tab === "recording" && <RecipeRecordings recipeId={recipeId} items={recs} />}
         </div>
     );
 }
