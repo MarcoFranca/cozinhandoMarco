@@ -50,6 +50,7 @@ export function RecipeSiteSheet({ recipe }: { recipe: RecipeSiteFields }) {
     const shortMax = 160;
     const longMax = 3000;
 
+
     const { fileInputRef, uploading, coverUrl, setCoverUrl, uploadCover } =
         useCoverUpload(recipe.cover_url ?? "");
 
@@ -88,12 +89,20 @@ export function RecipeSiteSheet({ recipe }: { recipe: RecipeSiteFields }) {
                     action={(fd) => {
                         startTransition(async () => {
                             fd.set("id", recipe.id);
+                            // markers (present flags) — ADICIONE estas duas linhas:
+                            fd.set("short_description_present", "1");
+                            fd.set("description_present", "1");
                             // booleans: marker
                             fd.set("preferir_link_youtube_present", "1");
 
-                            // descrição curta/longa
-                            fd.set("short_description", shortDesc.slice(0, shortMax));
-                            fd.set("description", longDesc.slice(0, longMax));
+                            // valores (limite opcional; use seu slice atual se preferir)
+                            const shortMax = 160;
+                            const longMax = 3000;
+                            const sanitize = (s: string, max: number) => (s ?? "").trim().slice(0, max);
+
+// garanta que SEMPRE envia valor, mesmo vazio:
+                            fd.set("short_description", sanitize(shortDesc, shortMax));
+                            fd.set("description", sanitize(longDesc, longMax));
 
                             // publicar agora vs despublicar
                             if (publishNow) {

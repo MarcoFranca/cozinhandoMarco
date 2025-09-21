@@ -19,6 +19,20 @@ export async function updateRecipeMetaAction(fd: FormData) {
     return m.updateRecipeMetaAction(fd);
 }
 
+// tips (PROXY async — corrige o erro)
+export async function addTipAction(fd: FormData) {
+    const m = await import("./instructions");
+    return m.addTipAction(fd);
+}
+export async function updateTipAction(fd: FormData) {
+    const m = await import("./instructions");
+    return m.updateTipAction(fd);
+}
+export async function deleteTipAction(fd: FormData) {
+    const m = await import("./instructions");
+    return m.deleteTipAction(fd);
+}
+
 // ingredients
 export async function addIngredientFormAction(fd: FormData) {
     const m = await import("./ingredients");

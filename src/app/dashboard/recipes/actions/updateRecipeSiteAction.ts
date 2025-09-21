@@ -1,4 +1,4 @@
-// app/dashboard/recipes/actions/updateRecipeSiteAction.ts
+// src/app/dashboard/recipes/actions/updateRecipeSiteAction.ts
 "use server";
 
 import { revalidatePath } from "next/cache";
@@ -64,10 +64,11 @@ export async function updateRecipeSiteAction(fd: FormData) {
         preferir_link_youtube?: boolean | null;
         site_order?: number | null;
         short_description?: string | null;
+        description?: string | null; // ★ novo — descrição longa
         publicado_at?: string | null;
         youtube_url?: string | null;
         cover_url?: string | null;
-        updated_at?: string; // let trigger handle, but keep here if needed
+        updated_at?: string;
     } = {};
 
     // slug
@@ -90,16 +91,21 @@ export async function updateRecipeSiteAction(fd: FormData) {
         payload.site_order = normalizeIntOrNull(fd.get("site_order"));
     }
 
-    // short_description (SEO)
-    if (fd.has("short_description")) {
+    // ★ short_description (SEO) — respeita present flag
+    if (fd.get("short_description_present") === "1") {
+        // se vier string vazia, normalizeStringOrNull retorna null ⇒ limpa a coluna
         payload.short_description = normalizeStringOrNull(fd.get("short_description"), 160);
     }
 
-    // publicado_at
+    // ★ description (longa) — respeita present flag
+    if (fd.get("description_present") === "1") {
+        payload.description = normalizeStringOrNull(fd.get("description"), 3000);
+    }
+
+    // publicado_at (permite vazio para despublicar)
     if (fd.has("publicado_at")) {
-        // allow empty to unpublish
         const iso = normalizeISODateOrNull(fd.get("publicado_at"));
-        payload.publicado_at = iso;
+        payload.publicado_at = iso; // vazio/invalid ⇒ null (unpublish)
     }
 
     // youtube_url / cover_url
@@ -145,6 +151,9 @@ export async function updateRecipeSiteAction(fd: FormData) {
     if (oldSlug && oldSlug !== newSlug) {
         revalidatePath(`/receitas/${oldSlug}`);
     }
+
+    // (Opcional) home/listas públicas
+    revalidatePath("/");
 
     return { ok: true };
 }

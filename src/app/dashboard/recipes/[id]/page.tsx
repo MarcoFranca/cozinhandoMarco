@@ -113,6 +113,7 @@ export default async function RecipePage({ params, searchParams }: Props) {
 
     // 2) Related lists
     const [{ data: ingredients }, { data: instructions }, { data: recordings }] =
+
         await Promise.all([
             supabase
                 .from("recipe_ingredients")
@@ -122,7 +123,7 @@ export default async function RecipePage({ params, searchParams }: Props) {
                 .order("position", { ascending: true }),
             supabase
                 .from("recipe_instructions")
-                .select("id, step, text, duration_minutes")
+                .select("id, step, text, duration_minutes, technique_id")
                 .eq("user_id", user.id)
                 .eq("recipe_id", recipeId)
                 .order("step", { ascending: true }),
@@ -137,6 +138,57 @@ export default async function RecipePage({ params, searchParams }: Props) {
     const ing = (ingredients ?? []) as unknown as RecipeIngredientRow[];
     const inst = (instructions ?? []) as unknown as RecipeInstructionRow[];
     const recs = (recordings ?? []) as unknown as RecordingRow[];
+// 1) Carregar tips (via RPC get_recipe_tips) e techniques (para mapear labels)
+    // ⚠️ troque o RPC por um select direto (garante recipe_ingredient_id)
+    const { data: tipsData } = await supabase
+        .from("recipe_tips")
+        .select("id, instruction_id, recipe_ingredient_id, type, title, text, position")
+        .eq("recipe_id", recipeId)
+        .eq("user_id", user.id)
+        .order("position", { ascending: true });
+
+    // carrega técnicas para mapear label por id
+    const { data: techData } = await supabase
+        .from("techniques")
+        .select("id, slug, label_ptbr");
+
+// group by INGREDIENT
+    type TipForUI = {
+        id: string;
+        recipe_ingredient_id: string | null;
+        instruction_id: string | null;
+        type: "tip" | "swap" | "alert";
+        title: string | null;
+        text: string;
+        position: number | null;
+    };
+    const tipsByIngredient: Record<string, TipForUI[]> = {};
+    (tipsData ?? []).forEach((t) => {
+        if (!t.recipe_ingredient_id) return;
+        tipsByIngredient[t.recipe_ingredient_id] ??= [];
+        tipsByIngredient[t.recipe_ingredient_id].push(t as TipForUI);
+    });
+
+    const tipsByInstruction: Record<string, TipForUI[]> = {};
+    (tipsData ?? []).forEach((t) => {
+        if (!t.instruction_id) return;
+        tipsByInstruction[t.instruction_id] ??= [];
+        tipsByInstruction[t.instruction_id].push({
+            id: t.id,
+            instruction_id: t.instruction_id,
+            recipe_ingredient_id: null,       // <<< faltava isto
+            type: t.type,
+            title: t.title,
+            text: t.text,
+            position: t.position ?? null,
+        });
+    });
+
+// 3) Mapear technique_id -> label
+    const techniqueById: Record<string, { slug: string; label: string }> = {};
+    (techData ?? []).forEach((t: any) => {
+        techniqueById[t.id] = { slug: t.slug, label: t.label_ptbr };
+    });
 
     const ingredientsCount = ing.length;
     const instructionsCount = inst.length;
@@ -265,9 +317,21 @@ export default async function RecipePage({ params, searchParams }: Props) {
                 </div>
             )}
 
-            {tab === "ingredients" && <RecipeIngredients recipeId={recipeId} items={ing} />}
-            {tab === "instructions" && <RecipeInstructions recipeId={recipeId} items={inst} />}
-            {tab === "recording" && <RecipeRecordings recipeId={recipeId} items={recs} />}
+            {tab === "ingredients" && (
+                <RecipeIngredients
+                    recipeId={recipeId}
+                    items={ing}
+                    tipsByIngredient={tipsByIngredient}
+                />
+            )}
+            {tab === "instructions" && (
+                <RecipeInstructions
+                    recipeId={recipeId}
+                    items={inst as any}
+                    tipsByInstruction={tipsByInstruction}
+                    techniqueById={techniqueById}
+                />
+            )}            {tab === "recording" && <RecipeRecordings recipeId={recipeId} items={recs} />}
         </div>
     );
 }

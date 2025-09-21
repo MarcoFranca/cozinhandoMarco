@@ -1,162 +1,32 @@
-import { createSupabaseRSCClient } from "@/lib/supabase/server-rsc";
+// src/app/(public)/receitas/[slug]/page.tsx
 import Image from "next/image";
 import Link from "next/link";
 import { IngredientsClient } from "@/components/recipes/IngredientsClient";
 import TipBadge from "@/components/recipes/TipBadge";
 import { extractYouTubeId, buildYouTubeEmbedUrl, buildYouTubeThumb } from "@/lib/youtube";
 import { labelForDifficulty, labelForCategory } from "@/lib/taxonomies/labels";
+import {
+    fetchBaseDetail,
+    fetchRecipeIdBySlug,
+    fetchInstructions,
+    fetchTips,
+    fetchTaxonomies,
+    fetchTechniquesMap,
+    groupTipsByType,
+    groupTipsByInstruction,
+    groupTipsByIngredient,
+} from "@/lib/recipes/public-loaders";
 
-export const revalidate = 300; // ISR
+export const revalidate = 300;
 
-// ===== Types =====
-type Ingredient = {
-    name: string;
-    amount: number | null;
-    unit: string | null;
-    optional: boolean | null;
-    position: number | null;
-};
-
-type Instruction = {
-    id: string;
-    step: number;
-    text: string;
-    duration_minutes: number | null;
-};
-
-type RecipeTip = {
-    id: string;
-    type: "tip" | "swap" | "alert";
-    title: string | null;
-    text: string;
-    position: number | null;
-    instruction_id: string | null;
-    created_at: string;
-    updated_at: string;
-};
-
-type TaxonomyItem = { slug: string; label: string };
-
-type DetailBase = {
-    site_slug: string;
-    name: string;
-    short_description: string | null;
-    description: string | null;
-    cover_url: string | null;
-    youtube_url: string | null;
-    preferir_link_youtube: boolean;
-    prep_time_minutes: number | null;
-    difficulty_slug: "iniciante" | "intermediario" | "avancado" | null;
-    publicado_at: string | null;
-    // legacy fields (ignored here): category, difficulty, instructions...
-    ingredients: Ingredient[];
-};
-
-// ===== Data loaders =====
-async function fetchBaseDetail(slug: string): Promise<DetailBase | null> {
-    const supabase = await createSupabaseRSCClient();
-    const { data, error } = await supabase.rpc("get_public_recipe_detail", { p_slug: slug });
-    if (error) {
-        console.error(error);
-        return null;
+// Helper to normalize Map | Record into a plain Record<string, T[]>
+function normalizeTipsByIngredient<T>(value: Map<string, T[]> | Record<string, T[]>): Record<string, T[]> {
+    if (value instanceof Map) {
+        return Object.fromEntries(value.entries());
     }
-    return (data && data[0]) ?? null;
+    return value;
 }
 
-async function fetchRecipeIdBySlug(slug: string): Promise<string | null> {
-    const supabase = await createSupabaseRSCClient();
-    const { data, error } = await supabase
-        .from("recipes")
-        .select("id")
-        .eq("site_slug", slug)
-        .maybeSingle();
-    if (error) {
-        console.error(error);
-        return null;
-    }
-    return data?.id ?? null;
-}
-
-async function fetchInstructions(recipeId: string): Promise<Instruction[]> {
-    const supabase = await createSupabaseRSCClient();
-    const { data, error } = await supabase
-        .from("recipe_instructions")
-        .select("id, step, text, duration_minutes")
-        .eq("recipe_id", recipeId)
-        .order("step", { ascending: true });
-    if (error) {
-        console.error(error);
-        return [];
-    }
-    return (data ?? []) as Instruction[];
-}
-
-async function fetchTips(recipeId: string): Promise<RecipeTip[]> {
-    const supabase = await createSupabaseRSCClient();
-    const { data, error } = await supabase.rpc("get_recipe_tips", { p_recipe_id: recipeId });
-    if (error) {
-        console.error(error);
-        return [];
-    }
-    // NOTE: get_recipe_tips may return quoted column names; normalize here.
-    return (data ?? []) as RecipeTip[];
-}
-
-type RecipeTaxonomies = {
-    categories: TaxonomyItem[];
-    cuisines: TaxonomyItem[];
-    diet: TaxonomyItem[];
-    techniques: TaxonomyItem[];
-    occasions: TaxonomyItem[];
-};
-
-async function fetchTaxonomies(recipeId: string): Promise<RecipeTaxonomies> {
-    const supabase = await createSupabaseRSCClient();
-    const { data, error } = await supabase.rpc("get_recipe_taxonomies", { p_recipe_id: recipeId });
-    if (error) {
-        console.error(error);
-        return { categories: [], cuisines: [], diet: [], techniques: [], occasions: [] };
-    }
-    return (data ?? {
-        categories: [],
-        cuisines: [],
-        diet: [],
-        techniques: [],
-        occasions: [],
-    }) as RecipeTaxonomies;
-}
-
-// ===== Helpers =====
-function groupTipsByType(tips: RecipeTip[]) {
-    return {
-        tip: tips.filter((t) => t.type === "tip"),
-        swap: tips.filter((t) => t.type === "swap"),
-        alert: tips.filter((t) => t.type === "alert"),
-    };
-}
-
-function groupTipsByInstruction(tips: RecipeTip[]): Map<string, RecipeTip[]> {
-    const map = new Map<string, RecipeTip[]>();
-    for (const t of tips) {
-        if (!t.instruction_id) continue;
-        const arr = map.get(t.instruction_id) ?? [];
-        arr.push(t);
-        map.set(t.instruction_id, arr);
-    }
-    // order each array by position then created_at
-    for (const [k, arr] of map) {
-        arr.sort((a, b) => {
-            const pa = a.position ?? Number.MAX_SAFE_INTEGER;
-            const pb = b.position ?? Number.MAX_SAFE_INTEGER;
-            if (pa !== pb) return pa - pb;
-            return a.created_at.localeCompare(b.created_at);
-        });
-        map.set(k, arr);
-    }
-    return map;
-}
-
-// ===== Page (RSC) =====
 export default async function Page({ params }: { params: { slug: string } }) {
     const detail = await fetchBaseDetail(params.slug);
     if (!detail) {
@@ -169,17 +39,37 @@ export default async function Page({ params }: { params: { slug: string } }) {
     }
 
     const recipeId = await fetchRecipeIdBySlug(params.slug);
-    const instructions = recipeId ? await fetchInstructions(recipeId) : [];
-    const allTips = recipeId ? await fetchTips(recipeId) : [];
-    const tax = recipeId ? await fetchTaxonomies(recipeId) : { categories: [], cuisines: [], diet: [], techniques: [], occasions: [] };
+    const [instructions, tips, tax, techMap] = await Promise.all([
+        recipeId ? fetchInstructions(recipeId) : Promise.resolve([]),
+        recipeId ? fetchTips(recipeId) : Promise.resolve([]),
+        recipeId
+            ? fetchTaxonomies(recipeId)
+            : Promise.resolve({ categories: [], cuisines: [], diet_labels: [], techniques: [], occasions: [] }),
+        fetchTechniquesMap(),
+    ]);
 
-    const tipsByType = groupTipsByType(allTips);
-    const tipsByInstruction = groupTipsByInstruction(allTips);
+    const tipsByType = groupTipsByType(tips);
+    const tipsByInstruction = groupTipsByInstruction(tips);
+    const tipsByIngredientMap = groupTipsByIngredient(tips);
+
+    const tipsByIngredientObj =
+        tipsByIngredientMap instanceof Map
+            ? Object.fromEntries(tipsByIngredientMap)
+            : tipsByIngredientMap; // se o helper já devolver objeto, mantemos
 
     const {
-        name, cover_url, youtube_url, preferir_link_youtube,
-        prep_time_minutes, difficulty_slug, description, ingredients,
+        name,
+        cover_url,
+        youtube_url,
+        preferir_link_youtube,
+        prep_time_minutes,
+        difficulty_slug,
+        description,
+        short_description, // <-- make sure loader returns this
+        ingredients,
     } = detail;
+
+    const longDescription = description ?? short_description ?? null;
 
     const primaryCategory = tax.categories[0]?.slug ?? null;
 
@@ -187,6 +77,25 @@ export default async function Page({ params }: { params: { slug: string } }) {
     const embedUrl = videoId ? buildYouTubeEmbedUrl(videoId) : null;
     const thumbUrl = videoId ? buildYouTubeThumb(videoId) : null;
     const poster = cover_url || thumbUrl || null;
+    const tipsByIngredientRecord = tipsByIngredientMap instanceof Map
+        ? Object.fromEntries(tipsByIngredientMap.entries())
+        : tipsByIngredientMap;
+    // Normalize to Record<string, RecipeTip[]>
+    // const tipsByIngredientRecord = normalizeTipsByIngredient(tipsByIngredient);
+    async function fetchIngredientsWithIds(recipeId: string) {
+        const supabase = await (await import("@/lib/supabase/server-rsc")).createSupabaseRSCClient();
+        const { data } = await supabase
+            .from("recipe_ingredients")
+            .select("id, name, amount, unit, optional, position")
+            .eq("recipe_id", recipeId)
+            .order("position", { ascending: true });
+        return data ?? [];
+    }
+// preferimos ingredientes com id (se o RPC não trouxe id)
+    const ingredientsWithIds =
+        recipeId && !(detail.ingredients?.[0]?.id)
+            ? await fetchIngredientsWithIds(recipeId)
+            : detail.ingredients;
 
     return (
         <main className="mx-auto max-w-3xl px-4 py-8 space-y-8">
@@ -198,8 +107,6 @@ export default async function Page({ params }: { params: { slug: string } }) {
                     {difficulty_slug && <span>• ⭐ {labelForDifficulty(difficulty_slug)}</span>}
                     {primaryCategory && <span>• {labelForCategory(primaryCategory)}</span>}
                 </div>
-
-                {/* Ações */}
                 <div className="flex gap-2">
                     {youtube_url && (
                         <a
@@ -222,40 +129,60 @@ export default async function Page({ params }: { params: { slug: string } }) {
                 </div>
             </header>
 
-            {/* Capa/Thumb */}
+            {/* Capa */}
             {poster && (
                 <div className="relative aspect-video overflow-hidden rounded-2xl border bg-muted">
-                    <Image src={poster} alt={`Capa da receita ${name}`} fill className="object-cover" sizes="(max-width: 768px) 100vw, 768px" />
+                    <Image
+                        src={poster}
+                        alt={`Capa da receita ${name}`}
+                        fill
+                        className="object-cover"
+                        sizes="(max-width: 768px) 100vw, 768px"
+                    />
                 </div>
             )}
 
-            {/* Descrição */}
-            {description && (
+            {/* Long description (preserving line breaks) */}
+            {longDescription && (
                 <section className="space-y-2">
                     <h2 className="text-xl font-semibold">Descrição</h2>
-                    <p className="leading-relaxed text-muted-foreground">{description}</p>
+                    <p className="leading-relaxed text-muted-foreground whitespace-pre-line">
+                        {longDescription}
+                    </p>
                 </section>
             )}
 
-            {/* Ingredientes */}
-            <IngredientsClient ingredients={ingredients} />
+            {/* Ingredients + per-ingredient tips */}
+            <IngredientsClient
+                ingredients={ingredientsWithIds}
+                tipsByIngredient={tipsByIngredientRecord}
+            />
 
-            {/* Modo de preparo + Inline Tips */}
+            {/* Instructions + technique + inline tips */}
             {instructions.length > 0 && (
                 <section className="space-y-4">
                     <h2 className="text-xl font-semibold">Modo de preparo</h2>
-                    <ol className="space-y-4 list-decimal pl-5">
+                    <ol className="list-decimal space-y-4 pl-5">
                         {instructions.map((st) => {
-                            const tips = tipsByInstruction.get(st.id) ?? [];
+                            const inline = tipsByInstruction.get(st.id) ?? [];
+                            const techLabel = st.technique_id && techMap[st.technique_id]?.label;
+
                             return (
                                 <li key={st.id} className="space-y-2 leading-relaxed">
-                                    <p>{st.text}</p>
+                                    <p>
+                                        {st.text}{" "}
+                                        {techLabel ? (
+                                            <span className="ml-2 inline-block rounded-full border px-2 py-0.5 text-xs align-middle">
+                        {techLabel}
+                      </span>
+                                        ) : null}
+                                    </p>
                                     {st.duration_minutes != null && (
                                         <p className="text-xs text-muted-foreground">~ {st.duration_minutes} min</p>
                                     )}
-                                    {tips.length > 0 && (
+                                    {inline.length > 0 && (
                                         <div className="flex flex-col gap-2" aria-live="polite">
-                                            {tips.map((t) => (
+                                            {inline.map((t) => (
                                                 <TipBadge key={t.id} type={t.type} text={t.text} />
                                             ))}
                                         </div>
@@ -267,7 +194,7 @@ export default async function Page({ params }: { params: { slug: string } }) {
                 </section>
             )}
 
-            {/* Blocos por tipo */}
+            {/* Tip blocks by type */}
             {(tipsByType.tip.length + tipsByType.swap.length + tipsByType.alert.length) > 0 && (
                 <section className="space-y-6">
                     {tipsByType.tip.length > 0 && (
@@ -303,7 +230,7 @@ export default async function Page({ params }: { params: { slug: string } }) {
                 </section>
             )}
 
-            {/* Vídeo (embed/card) */}
+            {/* Video */}
             {!preferir_link_youtube && embedUrl && (
                 <section id="video" className="space-y-4">
                     <h2 className="text-xl font-semibold">Vídeo</h2>
@@ -320,57 +247,48 @@ export default async function Page({ params }: { params: { slug: string } }) {
                 </section>
             )}
 
-            {preferir_link_youtube && youtube_url && poster && (
-                <section className="space-y-4">
-                    <h2 className="text-xl font-semibold">Assista no YouTube</h2>
-                    <Link
-                        href={youtube_url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="group relative block aspect-video overflow-hidden rounded-2xl border bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-primary"
-                        aria-label={`Abrir vídeo da receita ${name} no YouTube`}
-                        title={`Abrir vídeo da receita ${name} no YouTube`}
-                    >
-                        <Image src={poster} alt={`Thumbnail do vídeo: ${name}`} fill className="object-cover transition-transform group-hover:scale-[1.02]" />
-                        <div className="absolute inset-0 bg-black/10 group-hover:bg-black/20 transition-colors" />
-                        <div className="absolute inset-0 flex items-center justify-center">
-              <span className="inline-flex h-16 w-16 items-center justify-center rounded-full bg-white/90 shadow-lg backdrop-blur-sm group-hover:scale-105 transition-transform">
-                <svg viewBox="0 0 24 24" width="30" height="30" aria-hidden>
-                  <path d="M8 5v14l11-7z" />
-                </svg>
-              </span>
-                        </div>
-                    </Link>
-                </section>
-            )}
-
-            {/* Chips de categorias/diet/técnicas (opcional, bonito para SEO/descoberta) */}
-            {(tax.categories.length + tax.diet.length + tax.techniques.length + tax.cuisines.length + tax.occasions.length) > 0 && (
+            {/* Tags */}
+            {(tax.categories.length +
+                tax.diet_labels.length +
+                tax.techniques.length +
+                tax.cuisines.length +
+                tax.occasions.length) > 0 && (
                 <section className="space-y-3">
                     <h2 className="text-xl font-semibold">Tags</h2>
                     <div className="flex flex-wrap gap-2">
                         {tax.categories.map((c) => (
-                            <span key={`cat-${c.slug}`} className="rounded-full border px-3 py-1 text-sm">{c.label}</span>
+                            <span key={`cat-${c.slug}`} className="rounded-full border px-3 py-1 text-sm">
+                {c.label}
+              </span>
                         ))}
                         {tax.cuisines.map((c) => (
-                            <span key={`cui-${c.slug}`} className="rounded-full border px-3 py-1 text-sm">{c.label}</span>
+                            <span key={`cui-${c.slug}`} className="rounded-full border px-3 py-1 text-sm">
+                {c.label}
+              </span>
                         ))}
                         {tax.techniques.map((t) => (
-                            <span key={`tec-${t.slug}`} className="rounded-full border px-3 py-1 text-sm">{t.label}</span>
+                            <span key={`tec-${t.slug}`} className="rounded-full border px-3 py-1 text-sm">
+                {t.label}
+              </span>
                         ))}
-                        {tax.diet.map((d) => (
-                            <span key={`diet-${d.slug}`} className="rounded-full border px-3 py-1 text-sm">{d.label}</span>
+                        {tax.diet_labels.map((d) => (
+                            <span key={`diet-${d.slug}`} className="rounded-full border px-3 py-1 text-sm">
+                {d.label}
+              </span>
                         ))}
                         {tax.occasions.map((o) => (
-                            <span key={`occ-${o.slug}`} className="rounded-full border px-3 py-1 text-sm">{o.label}</span>
+                            <span key={`occ-${o.slug}`} className="rounded-full border px-3 py-1 text-sm">
+                {o.label}
+              </span>
                         ))}
                     </div>
                 </section>
             )}
 
-            {/* Rodapé */}
             <footer className="pt-6">
-                <Link href="/" className="text-sm underline">← Voltar para receitas</Link>
+                <Link href="/" className="text-sm underline">
+                    ← Voltar para receitas
+                </Link>
             </footer>
         </main>
     );
